@@ -11,9 +11,15 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String customerId;
+
+    @Column(nullable = false)
     private String accountId;
-    private Double transactionAmount;
+
+    @Column(nullable = false)
+    private double transactionAmount;
+
     private String currency;
     private LocalDateTime txnTimestamp;
     private String channel;
@@ -21,15 +27,13 @@ public class Transaction {
     private String merchantId;
     private String merchantCategory;
     private String ipAddress;
-    private Integer ipRiskScore;
-    private Integer ruleRiskScore;
+    private int ipRiskScore;
+    private int ruleRiskScore;
+    private boolean isFraudLabel;
     private String status;
-    private Boolean isFraudLabel;
+    private String riskRuleFlags;
 
-    public Transaction() {
-    }
-
-    // getters and setters
+    // Getters and Setters
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -40,8 +44,8 @@ public class Transaction {
     public String getAccountId() { return accountId; }
     public void setAccountId(String accountId) { this.accountId = accountId; }
 
-    public Double getTransactionAmount() { return transactionAmount; }
-    public void setTransactionAmount(Double transactionAmount) { this.transactionAmount = transactionAmount; }
+    public double getTransactionAmount() { return transactionAmount; }
+    public void setTransactionAmount(double transactionAmount) { this.transactionAmount = transactionAmount; }
 
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
@@ -64,15 +68,18 @@ public class Transaction {
     public String getIpAddress() { return ipAddress; }
     public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
 
-    public Integer getIpRiskScore() { return ipRiskScore; }
-    public void setIpRiskScore(Integer ipRiskScore) { this.ipRiskScore = ipRiskScore; }
+    public int getIpRiskScore() { return ipRiskScore; }
+    public void setIpRiskScore(int ipRiskScore) { this.ipRiskScore = ipRiskScore; }
 
-    public Integer getRuleRiskScore() { return ruleRiskScore; }
-    public void setRuleRiskScore(Integer ruleRiskScore) { this.ruleRiskScore = ruleRiskScore; }
+    public int getRuleRiskScore() { return ruleRiskScore; }
+    public void setRuleRiskScore(int ruleRiskScore) { this.ruleRiskScore = ruleRiskScore; }
+
+    public boolean isFraudLabel() { return isFraudLabel; }
+    public void setFraudLabel(boolean fraudLabel) { isFraudLabel = fraudLabel; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
-    public Boolean getIsFraudLabel() { return isFraudLabel; }
-    public void setIsFraudLabel(Boolean fraudLabel) { isFraudLabel = fraudLabel; }
+    public String getRiskRuleFlags() { return riskRuleFlags; }
+    public void setRiskRuleFlags(String riskRuleFlags) { this.riskRuleFlags = riskRuleFlags; }
 }

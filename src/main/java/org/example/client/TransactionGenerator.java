@@ -36,7 +36,6 @@ public class TransactionGenerator {
 
         req.setTransactionAmount(1500.75);
         req.setCurrency("INR");
-        req.setTxnTimestamp(LocalDateTime.now());
 
         String[] channels = {"WEB", "MOBILE_APP", "UPI"};
         req.setChannel(channels[random.nextInt(channels.length)]);
@@ -45,10 +44,6 @@ public class TransactionGenerator {
         req.setMerchantId("M" + (3000 + random.nextInt(100)));
         req.setMerchantCategory("GROCERY");
         req.setIpAddress("192.168.1." + random.nextInt(255));
-
-        req.setIpRiskScore(random.nextInt(40));
-        req.setRuleRiskScore(random.nextInt(40));
-        req.setIsFraudLabel(false);
 
         return req;
     }
