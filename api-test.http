@@ -1,24 +1,177 @@
-### Create a transaction
+### ==================================================================================
+### MANUAL SIMULATION CONTROL
+### ==================================================================================
+### Requirement:
+### - Start the transaction generation manually via an API call.
+###
+### TEST CASE: Run the simulation to generate 10 transactions
+POST http://localhost:8080/api/simulation/run?count=10
+
+
+### ==================================================================================
+### 1. Transaction Generation
+### ==================================================================================
+### Requirement: The system must generate transactions programmatically.
+### (This request simulates a programmatically generated transaction being sent to the API)
 POST http://localhost:8080/api/transactions
 Content-Type: application/json
 
 {
-  "customerId": "CUST12345",
-  "accountId": "ACC54321",
-  "transactionAmount": 150.50,
+  "customerId": "CUST_GEN_001",
+  "accountId": "ACC_GEN_001",
+  "transactionAmount": 120.50,
   "currency": "USD",
-  "channel": "online",
+  "channel": "WEB",
   "country": "USA",
-  "merchantId": "MERCH-XYZ",
-  "merchantCategory": "electronics",
-  "ipAddress": "192.168.1.10"
+  "merchantId": "MERCH_001",
+  "merchantCategory": "retail",
+  "ipAddress": "10.0.0.1"
 }
 
-### Get all transactions
+### ==================================================================================
+### 2. API Layer
+### ==================================================================================
+### Requirement: All transaction processing must happen through APIs (Receiving, Validating, Rules, Status).
+### (This request demonstrates the API receiving and processing a standard transaction)
+POST http://localhost:8080/api/transactions
+Content-Type: application/json
+
+{
+  "customerId": "CUST_API_001",
+  "accountId": "ACC_API_001",
+  "transactionAmount": 250.00,
+  "currency": "EUR",
+  "channel": "MOBILE",
+  "country": "FRA",
+  "merchantId": "MERCH_002",
+  "merchantCategory": "dining",
+  "ipAddress": "10.0.0.2"
+}
+
+### ==================================================================================
+### 3. Validation Logic
+### ==================================================================================
+### Requirement: The API must validate whether a transaction has proper and complete details.
+### (This request sends INVALID data to prove validation works and returns an error)
+POST http://localhost:8080/api/transactions
+Content-Type: application/json
+
+{
+  "customerId": "",
+  "accountId": "ACC_VAL_FAIL",
+  "transactionAmount": -50.00,
+  "currency": "USD",
+  "channel": "WEB",
+  "country": "USA",
+  "merchantId": "MERCH_003",
+  "merchantCategory": "retail",
+  "ipAddress": "10.0.0.3"
+}
+
+### ==================================================================================
+### 4. Fraud Detection Rules
+### ==================================================================================
+### Requirement: Rule-based fraud detection must be implemented (Legitimate vs Fraudulent).
+### (This request triggers a FRAUD rule - High Amount > 50,000)
+POST http://localhost:8080/api/transactions
+Content-Type: application/json
+
+{
+  "customerId": "CUST_RULE_001",
+  "accountId": "ACC_RULE_001",
+  "transactionAmount": 60000.00,
+  "currency": "USD",
+  "channel": "WEB",
+  "country": "USA",
+  "merchantId": "MERCH_LUXURY",
+  "merchantCategory": "jewelry",
+  "ipAddress": "10.0.0.4"
+}
+
+### ==================================================================================
+### 5. Fraud Reason Tracking
+### ==================================================================================
+### Requirement: The exact rule that triggered the fraud must be identified and recorded.
+### (This request triggers a different rule - Channel Validation - to show specific reason tracking)
+POST http://localhost:8080/api/transactions
+Content-Type: application/json
+
+{
+  "customerId": "CUST_REASON_001",
+  "accountId": "ACC_REASON_001",
+  "transactionAmount": 100.00,
+  "currency": "USD",
+  "channel": "UNKNOWN_CHANNEL",
+  "country": "USA",
+  "merchantId": "MERCH_005",
+  "merchantCategory": "electronics",
+  "ipAddress": "10.0.0.5"
+}
+
+### ==================================================================================
+### 6. Database Storage
+### ==================================================================================
+### Requirement: All transactions must be stored in the database with status and reason.
+### (This request creates a record that you can then verify in the DB or via the GET endpoint below)
+POST http://localhost:8080/api/transactions
+Content-Type: application/json
+
+{
+  "customerId": "CUST_DB_001",
+  "accountId": "ACC_DB_001",
+  "transactionAmount": 300.00,
+  "currency": "GBP",
+  "channel": "POS",
+  "country": "GBR",
+  "merchantId": "MERCH_006",
+  "merchantCategory": "travel",
+  "ipAddress": "10.0.0.6"
+}
+
+### ==================================================================================
+### 7. API Endpoints for Data Retrieval - All Transactions
+### ==================================================================================
+### Requirement:
+### - Fetch all transactions
+###
+### TEST CASE: Get all transactions
 GET http://localhost:8080/api/transactions
 
-### Get a single transaction by ID
-GET http://localhost:8080/api/transactions/1
+### ==================================================================================
+### 7. API Endpoints for Data Retrieval - Filtered by Date
+### ==================================================================================
+### Requirement:
+### - Fetch transactions filtered by date
+###
+### TEST CASE: Get transactions by date range
+### (Note: Adjust dates to match your current execution time if needed)
+GET http://localhost:8080/api/transactions?startDate=2023-01-01T00:00:00&endDate=2025-12-31T23:59:59
 
-### Get fraudulent transactions (Alerts)
+### ==================================================================================
+### 7. API Endpoints for Data Retrieval - Only Fraud Transactions
+### ==================================================================================
+### Requirement:
+### - Fetch only fraud transactions
+###
+### TEST CASE: Get fraudulent transactions (Alerts)
 GET http://localhost:8080/api/alerts
+
+### ==================================================================================
+### 8. Status Management
+### ==================================================================================
+### Requirement: Each transaction must have a clear state (Pending, Successful, Fraud).
+### (This request creates a successful transaction to verify the 'NORMAL' status)
+POST http://localhost:8080/api/transactions
+Content-Type: application/json
+
+{
+  "customerId": "CUST_STATUS_001",
+  "accountId": "ACC_STATUS_001",
+  "transactionAmount": 75.00,
+  "currency": "USD",
+  "channel": "WEB",
+  "country": "USA",
+  "merchantId": "MERCH_007",
+  "merchantCategory": "books",
+  "ipAddress": "10.0.0.7"
+}

@@ -33,6 +33,17 @@ public class Transaction {
     private String status;
     private String riskRuleFlags;
 
+    // New fields for advanced rules
+    private String deviceFingerprint;
+    private boolean isNewDevice;
+    private String userAccountCountry;
+    private long timeSinceLastTransaction; // in seconds
+    private double dailyTotalAmount;
+    private int dailyTransactionCount;
+    private boolean isDormant;
+    private boolean isBlacklisted;
+
+
     // Getters and Setters
 
     public Long getId() { return id; }
@@ -82,4 +93,28 @@ public class Transaction {
 
     public String getRiskRuleFlags() { return riskRuleFlags; }
     public void setRiskRuleFlags(String riskRuleFlags) { this.riskRuleFlags = riskRuleFlags; }
+
+    public String getDeviceFingerprint() { return deviceFingerprint; }
+    public void setDeviceFingerprint(String deviceFingerprint) { this.deviceFingerprint = deviceFingerprint; }
+
+    public boolean isNewDevice() { return isNewDevice; }
+    public void setNewDevice(boolean aNew) { isNewDevice = aNew; }
+
+    public String getUserAccountCountry() { return userAccountCountry; }
+    public void setUserAccountCountry(String userAccountCountry) { this.userAccountCountry = userAccountCountry; }
+
+    public long getTimeSinceLastTransaction() { return timeSinceLastTransaction; }
+    public void setTimeSinceLastTransaction(long timeSinceLastTransaction) { this.timeSinceLastTransaction = timeSinceLastTransaction; }
+
+    public double getDailyTotalAmount() { return dailyTotalAmount; }
+    public void setDailyTotalAmount(double dailyTotalAmount) { this.dailyTotalAmount = dailyTotalAmount; }
+
+    public int getDailyTransactionCount() { return dailyTransactionCount; }
+    public void setDailyTransactionCount(int dailyTransactionCount) { this.dailyTransactionCount = dailyTransactionCount; }
+
+    public boolean isDormant() { return isDormant; }
+    public void setDormant(boolean dormant) { isDormant = dormant; }
+
+    public boolean isBlacklisted() { return isBlacklisted; }
+    public void setBlacklisted(boolean blacklisted) { this.isBlacklisted = blacklisted; }
 }

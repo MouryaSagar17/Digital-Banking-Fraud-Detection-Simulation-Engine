@@ -1,6 +1,5 @@
 package org.example;
 
-import org.example.client.TransactionViewer;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -15,16 +14,19 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // 1. Run the simulation to generate and store data
-        transactionSimulator.runSimulation(10); // Generate 10 transactions
+        // Automatic transaction generation is now disabled.
+        // You can trigger it manually by calling the /api/simulation/run endpoint.
+        
+        // // 1. Run the simulation to generate and store data
+        // transactionSimulator.runSimulation(10); // Generate 10 transactions
 
-        // Add a small delay to ensure all transactions are processed and saved
-        System.out.println("\nWaiting for transactions to be processed...");
-        Thread.sleep(2000); 
+        // // Add a small delay to ensure all transactions are processed and saved
+        // System.out.println("\nWaiting for transactions to be processed...");
+        // Thread.sleep(2000); 
 
-        // 2. Fetch and display all transactions from the database via the API
-        System.out.println("\n--- Fetching All Stored Transactions ---");
-        TransactionViewer.main(new String[]{}); // Call the viewer to print the data
-        System.out.println("--- End of Report ---");
+        // // 2. Fetch and display all transactions from the database via the API
+        // System.out.println("\n--- Fetching All Stored Transactions ---");
+        // TransactionViewer.main(new String[]{}); // Call the viewer to print the data
+        // System.out.println("--- End of Report ---");
     }
 }
