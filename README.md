@@ -1,201 +1,111 @@
-# 📊 Fraud Detection Pipeline
+# 📊 Digital Banking Fraud Detection Simulation Engine
 
-A simple REST API + MySQL workflow for simulating and validating financial transactions.
+A real-time, rule-based fraud detection engine with a live simulation dashboard.
 
 ---
 
 ## Overview
 
-This project demonstrates an end-to-end fraud detection flow:
+This project provides an end-to-end simulation of a financial fraud detection system. It includes programmatic transaction generation, a robust rule-based evaluation engine, and a live web dashboard to monitor transactions in real-time.
 
-- A transaction is generated  
-- Sent to a REST API  
-- Validated using rule checks  
-- Stored in MySQL if valid  
-
-Designed for learning:
-
-- Backend development with Spring Boot  
-- API validation  
-- Fraud rule simulation  
+- **Transaction Simulation**: Generate synthetic financial data via a REST API.
+- **Real-time Rule Engine**: Each transaction is evaluated against a comprehensive set of 25+ fraud detection rules.
+- **Live Dashboard**: A web-based UI visualizes transaction statuses (Normal vs. Fraud) and displays a live feed of incoming transactions using WebSockets.
+- **RESTful Control**: The entire system is controlled and monitored via a clean REST API.
 
 ---
 
 ## Features
 
-- Generate sample transactions  
-- REST API to receive and validate data  
-- Field-level and rule-based validation  
-- Store valid transactions in MySQL  
-- Clear validation errors  
-- IntelliJ HTTP Client support  
-- Clean and readable structure  
+- **Comprehensive Rule Engine**: Implements over 25 rules, including high amount, velocity, IP risk, geolocation, and behavioral checks.
+- **Live Web Dashboard**: A Chart.js and WebSocket-powered interface to monitor the system in real-time.
+- **On-Demand Simulation**: Start and stop the transaction simulation via a dedicated API endpoint.
+- **REST API for Control & Retrieval**: Full API suite to process transactions, retrieve data (all, by date, fraud-only), and control the simulation.
+- **Input Validation**: Ensures data integrity for all incoming transactions.
+- **Clear Status Management**: Transactions are tracked with `PENDING`, `NORMAL`, `SUSPICIOUS`, and `FRAUD` statuses.
+- **Detailed API Testing Suite**: An `api-test.http` file is included for easy, one-click testing of all features.
 
 ---
 
 ## Architecture
 
 ```text
-          +---------------------------+
-          |   Transaction Generator   |
-          |       (Java Program)      |
-          +-------------+-------------+
-                        |
-                        | POST /api/transactions
-                        v
-                +--------------------+
-                |      REST API      |
-                |  Spring Boot App   |
-                +---------+----------+
-                          |
-                          | Validation + Rules
-                          v
-                +----------------------+
-                |      Database        |
-                |        MySQL         |
-                +----------------------+
++----------------------+      +-------------------------+      +----------------------+
+|   API Test Client    |----->|   Transaction Simulator |----->|  Live Web Dashboard  |
+|  (api-test.http)     |      |    (Via REST API)       |      |      (index.html)    |
++----------------------+      +-------------------------+      +----------+-----------+
+                                                                          | (WebSocket)
+                                                                          |
+          +---------------------------------------------------------------+
+          |
+          v
++--------------------+      +----------------------+      +----------------------+
+|      REST API      |----->|  Fraud Rule Engine   |----->|       Database       |
+|  (Spring Boot)     |      | (25+ Detection Rules)|      |        (MySQL)       |
++--------------------+      +----------------------+      +----------------------+
 ```
+
 ## Requirements
-Java 24
-
-Spring Boot 3.3
-
-Maven
-
-MySQL
-
-IntelliJ IDEA
+- Java 17+
+- Maven
+- MySQL
 
 ## Setup Instructions
 
-### 1. Clone the repository
-``` bash
-
+### 1. Clone the Repository
+```bash
 git clone https://github.com/MouryaSagar17/Digital-Banking-Fraud-Detection-Simulation-Engine
-cd Fraud_Detection
-``` 
-### 2. Create the MySQL database
-
-``` sql
-CREATE DATABASE fraud_demo;
-
-USE fraud_demo;
-
-CREATE TABLE transactions (
-  id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  customer_id VARCHAR(50),
-  account_id VARCHAR(50),
-  transaction_amount DECIMAL(12,2),
-  currency CHAR(3),
-  txn_timestamp DATETIME,
-  channel VARCHAR(20),
-  country VARCHAR(50),
-  merchant_id VARCHAR(50),
-  merchant_category VARCHAR(50),
-  ip_address VARCHAR(45),
-  ip_risk_score INT,
-  rule_risk_score INT,
-  status VARCHAR(20),
-  is_fraud_label BOOLEAN,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+cd Digital-Banking-Fraud-Detection-Simulation-Engine
 ```
-### 3. Configure Spring Boot
-``` properties
 
+### 2. Create the MySQL Database
+```sql
+CREATE DATABASE fraud_demo;
+```
+*Note: You do not need to create the `transactions` table manually. The application will do it for you.*
+
+### 3. Configure Spring Boot
+Open `src/main/resources/application.properties` and set your MySQL username and password:
+```properties
 spring.datasource.url=jdbc:mysql://localhost:3306/fraud_demo
 spring.datasource.username=root
 spring.datasource.password=your_password
-spring.jpa.hibernate.ddl-auto=none
-``` 
-### 4. Run the application
-``` bash
 
-mvn spring-boot:run
-API endpoint:
-``` 
-
-``` text
-http://localhost:8080
-``` 
-## Testing with IntelliJ HTTP Client
-Create api-test.http:
-
-``` http
-
-POST http://localhost:8080/api/transactions
-```
-Content-Type: application/json
-```
-{
-  "customerId": "CUST1001",
-  "accountId": "ACC2001",
-  "transactionAmount": 1500.75,
-  "currency": "INR",
-  "txnTimestamp": "2025-12-06T12:15:00",
-  "channel": "WEB",
-  "country": "IN",
-  "merchantId": "M3001",
-  "merchantCategory": "GROCERY",
-  "ipAddress": "192.168.1.10",
-  "ipRiskScore": 20,
-  "ruleRiskScore": 25,
-  "isFraudLabel": false
-}
-```
-## Error Handling & Validation Techniques
-### Validation Types
-```
-Required fields
-
-Format validation
-
-Pattern rules
-
-Allowed channel values
-
-Amount range checks
-
-Risk score thresholds
+# This setting allows the application to create/update the database table automatically
+spring.jpa.hibernate.ddl-auto=update
 ```
 
-### Example Errors
-``` 
-Problem	Message
-Missing field	customerId must not be blank
-Illegal amount	Transaction amount is invalid
-Wrong channel	Invalid channel
-Bad ID format	Customer ID must start with CUST
-``` 
-## Project Structure
-``` text
+## How to Run
 
-src/main/java
- ├── controller          → REST API endpoint
- ├── service             → Validation and rule logic
- ├── entity              → Transaction model
- ├── repository          → Spring Data JPA
- └── client              → Transaction generator
+### 1. Run the Application
+Start the Spring Boot application by running the `main` method in `FraudDetectionApplication.java`.
+
+### 2. View the Live Dashboard
+Open your web browser and navigate to:
+**[http://localhost:8080](http://localhost:8080)**
+
+The dashboard will load, but no transactions will appear initially.
+
+### 3. Start the Simulation
+To generate live data, you need to start the transaction simulator.
+- Open the `api-test.http` file in your IDE.
+- Find the request block labeled **MANUAL SIMULATION CONTROL**.
+- Click the "Run" icon next to `POST http://localhost:8080/api/simulation/run`.
+
+This will generate 10 new transactions, which will appear in real-time on the dashboard.
+
+## API Endpoints
+
+- `POST /api/simulation/run?count={n}`: Generates `n` random transactions.
+- `POST /api/transactions`: Submits a single new transaction for processing.
+- `GET /api/transactions`: Retrieves all transactions.
+- `GET /api/transactions?startDate={...}&endDate={...}`: Retrieves transactions within a date range.
+- `GET /api/alerts`: Retrieves only transactions flagged as `SUSPICIOUS` or `FRAUD`.
+- `GET /api/transactions/{id}`: Retrieves a single transaction by its ID.
+
+## Testing
+The included `api-test.http` file provides a complete suite for testing every feature of the application. Use it to:
+- Send valid, invalid, and fraudulent transactions.
+- Test all data retrieval endpoints.
+- Manually trigger the transaction simulator.
 ```
-## Milestones
-
-``` ### Milestone 1
-Project setup
-
-Database design
-
-API creation
-
-Core validation rules
-``` 
-
-``` ### Milestone 2
-Transaction generator
-
-Simulation testing
-
-Extended error handling
-
-Documentation cleanup
-
-``` 
