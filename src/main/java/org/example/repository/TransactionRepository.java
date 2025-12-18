@@ -4,6 +4,7 @@ import org.example.model.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -11,4 +12,5 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByCustomerId(String customerId);
     List<Transaction> findByAccountId(String accountId);
     List<Transaction> findByIsFraudLabel(boolean isFraudLabel);
+    List<Transaction> findByTxnTimestampBetween(LocalDateTime startDate, LocalDateTime endDate);
 }
