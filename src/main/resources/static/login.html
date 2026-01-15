@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - FraudGuard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 450px;
+        }
+        .brand-logo {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #0d6efd;
+            font-weight: 700;
+            font-size: 1.8rem;
+        }
+        .nav-pills .nav-link {
+            color: #6c757d;
+            font-weight: 500;
+            border-radius: 20px;
+            padding: 8px 20px;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #e7f1ff;
+            color: #0d6efd;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            font-weight: 600;
+            border-radius: 8px;
+        }
+        .footer-links {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+        .footer-links a {
+            text-decoration: none;
+            color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="brand-logo">
+            <i class="fas fa-shield-alt"></i> FraudGuard
+        </div>
+
+        <!-- Toggle Tabs -->
+        <ul class="nav nav-pills justify-content-center mb-4" id="loginTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="password-tab" data-bs-toggle="pill" data-bs-target="#password-login" type="button">Password</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="otp-tab" data-bs-toggle="pill" data-bs-target="#otp-login" type="button">OTP</button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- Password Login Tab -->
+            <div class="tab-pane fade show active" id="password-login">
+                <form id="passwordForm">
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="emailPass" placeholder="Enter your email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" placeholder="Enter your password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="loginBtn">Log In</button>
+                    <div id="passStatus" class="text-center mt-2 small"></div>
+                </form>
+            </div>
+
+            <!-- OTP Login Tab -->
+            <div class="tab-pane fade" id="otp-login">
+                <form id="otpForm">
+                    <div id="otpEmailStep">
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="emailOtp" placeholder="Enter your email" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="sendOtpBtn">Send OTP</button>
+                    </div>
+                    <div id="otpVerifyStep" style="display:none;">
+                        <div class="mb-3">
+                            <label class="form-label">Enter OTP</label>
+                            <input type="text" class="form-control" id="otp" placeholder="123456" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Verify & Login</button>
+                    </div>
+                    <div id="otpStatus" class="text-center mt-2 small"></div>
+                </form>
+            </div>
+        </div>
+
+        <div class="footer-links">
+            <a href="#">Forgot Password?</a>
+            <a href="/register.html">New user? Register</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Password Login
+        document.getElementById('passwordForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            const msg = document.getElementById('passStatus');
+            const email = document.getElementById('emailPass').value;
+            const password = document.getElementById('password').value;
+
+            btn.disabled = true;
+            btn.innerText = 'Logging in...';
+            msg.innerText = '';
+
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
+            .then(handleAuthResponse)
+            .catch(err => {
+                msg.className = 'text-center mt-2 small text-danger';
+                msg.innerText = 'Network error.';
+                btn.disabled = false;
+                btn.innerText = 'Log In';
+            });
+        });
+
+        // OTP Login
+        let otpEmail = '';
+        document.getElementById('otpForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const otpVerifyStep = document.getElementById('otpVerifyStep');
+            const msg = document.getElementById('otpStatus');
+
+            if (otpVerifyStep.style.display === 'none') {
+                // Request OTP
+                otpEmail = document.getElementById('emailOtp').value;
+                const btn = document.getElementById('sendOtpBtn');
+                btn.disabled = true;
+                btn.innerText = 'Sending...';
+                msg.innerText = '';
+
+                fetch('/api/auth/request-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: otpEmail })
+                })
+                .then(async res => {
+                    if (res.ok) {
+                        document.getElementById('otpEmailStep').style.display = 'none';
+                        otpVerifyStep.style.display = 'block';
+                        msg.className = 'text-center mt-2 small text-success';
+                        msg.innerText = 'OTP sent successfully.';
+                    } else {
+                        const error = await res.text();
+                        msg.className = 'text-center mt-2 small text-danger';
+                        msg.innerText = error;
+                        btn.disabled = false;
+                        btn.innerText = 'Send OTP';
+                    }
+                });
+
+            } else {
+                // Verify OTP
+                const otp = document.getElementById('otp').value;
+                fetch('/api/auth/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: otpEmail, otp: otp })
+                })
+                .then(handleAuthResponse)
+                .catch(err => {
+                    msg.className = 'text-center mt-2 small text-danger';
+                    msg.innerText = 'Network error.';
+                });
+            }
+        });
+
+        async function handleAuthResponse(res) {
+            const msgDiv = document.getElementById(res.url.includes('login') ? 'passStatus' : 'otpStatus');
+            if (res.ok) {
+                const data = await res.json();
+                localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('authToken', data.token);
+                window.location.href = '/';
+            } else {
+                const data = await res.json();
+                msgDiv.className = 'text-center mt-2 small text-danger';
+                msgDiv.innerText = data.message || 'Authentication failed.';
+                // Re-enable button
+                const btnId = msgDiv.id === 'passStatus' ? 'loginBtn' : 'sendOtpBtn';
+                const btnText = msgDiv.id === 'passStatus' ? 'Log In' : 'Send OTP';
+                const btn = document.getElementById(btnId);
+                if(btn) {
+                    btn.disabled = false;
+                    btn.innerText = btnText;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

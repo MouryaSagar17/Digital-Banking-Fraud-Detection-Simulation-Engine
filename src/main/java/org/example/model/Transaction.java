@@ -1,5 +1,6 @@
 package org.example.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -21,7 +22,10 @@ public class Transaction {
     private double transactionAmount;
 
     private String currency;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime txnTimestamp;
+
     private String channel;
     private String country;
     private String merchantId;
@@ -42,6 +46,10 @@ public class Transaction {
     private int dailyTransactionCount;
     private boolean isDormant;
     private boolean isBlacklisted;
+
+    // ML Fields
+    private String mlPrediction;
+    private double mlScore;
 
 
     // Getters and Setters
@@ -117,4 +125,10 @@ public class Transaction {
 
     public boolean isBlacklisted() { return isBlacklisted; }
     public void setBlacklisted(boolean blacklisted) { this.isBlacklisted = blacklisted; }
+
+    public String getMlPrediction() { return mlPrediction; }
+    public void setMlPrediction(String mlPrediction) { this.mlPrediction = mlPrediction; }
+
+    public double getMlScore() { return mlScore; }
+    public void setMlScore(double mlScore) { this.mlScore = mlScore; }
 }

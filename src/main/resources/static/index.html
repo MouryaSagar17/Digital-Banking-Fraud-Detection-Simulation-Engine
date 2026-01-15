@@ -1,107 +1,1117 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Fraud Detection Simulation</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraud Detection Dashboard</title>
+
+    <!-- CSS Libraries -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
-        body { font-family: sans-serif; }
-        #chart-container { width: 50%; margin: auto; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
+        :root {
+            --primary-bg: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-primary: #333;
+            --header-bg: #0056b3;
+            --risk-low: #28a745;
+            --risk-med: #ffc107;
+            --risk-high: #dc3545;
+        }
+
+        body {
+            background-color: var(--primary-bg);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Top Navigation */
+        .navbar {
+            background-color: var(--card-bg);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .breadcrumb { margin-bottom: 0; }
+
+        /* Header */
+        .dashboard-header {
+            background-color: var(--header-bg);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        /* Cards */
+        .kpi-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .kpi-value { font-size: 2rem; font-weight: bold; color: var(--header-bg); }
+        .kpi-label { color: #666; font-size: 0.9rem; text-transform: uppercase; }
+
+        /* Tables */
+        .table-container {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .table-header { font-weight: bold; margin-bottom: 10px; color: #555; }
+        .risk-row-low { border-left: 5px solid var(--risk-low); }
+        .risk-row-med { border-left: 5px solid var(--risk-med); }
+        .risk-row-high { border-left: 5px solid var(--risk-high); }
+
+        /* Map */
+        #world-map {
+            height: 400px;
+            border-radius: 8px;
+            z-index: 1;
+        }
+
+        /* Charts */
+        .chart-container {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            height: 400px;
+        }
+
+        /* Live Indicator */
+        .live-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background-color: #28a745;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Tabs */
+        .nav-tabs .nav-link {
+            color: #555;
+            font-weight: 600;
+        }
+        .nav-tabs .nav-link.active {
+            color: var(--header-bg);
+            border-top: 3px solid var(--header-bg);
+        }
+        .tab-content {
+            padding-top: 20px;
+        }
+
+        /* Recent Transactions Specific Styles */
+        .sub-nav-pills .nav-link {
+            border-radius: 20px;
+            padding: 6px 16px;
+            color: #6c757d;
+            font-weight: 500;
+            margin-right: 5px;
+            font-size: 0.9rem;
+        }
+        .sub-nav-pills .nav-link.active {
+            background-color: #e7f1ff;
+            color: #0d6efd;
+        }
+        .txn-id-link {
+            color: #0d6efd;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .txn-id-link:hover { text-decoration: underline; }
+        .amount-text { color: #198754; font-weight: 600; font-size: 0.9rem; }
+
+        .fraud-reason {
+            color: #fd7e14;
+            font-size: 0.75rem;
+            display: block;
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .badge-fraud-alert {
+            background-color: #ffebee;
+            color: #dc3545;
+            border: 1px solid #dc3545;
+            border-radius: 12px;
+            padding: 4px 8px;
+            font-weight: 600;
+            font-size: 0.7rem;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .badge-pending {
+            background-color: #fff3cd;
+            color: #856404;
+            border-radius: 12px;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+        .badge-success-custom {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border-radius: 12px;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+        .badge-failed {
+            background-color: #f8d7da;
+            color: #842029;
+            border-radius: 12px;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+
+        .refresh-btn {
+            white-space: nowrap;
+        }
+
+        .clickable-row {
+            cursor: pointer;
+        }
+        .clickable-row:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* Alerts Table Specifics */
+        #alerts-table th, #alerts-table td {
+            vertical-align: middle;
+        }
+        .action-btn-group {
+            display: flex;
+            gap: 5px;
+        }
     </style>
 </head>
 <body>
-    <h1 style="text-align: center;">Fraud Detection Simulation</h1>
-    <div id="chart-container">
-        <canvas id="fraud-chart"></canvas>
+
+    <!-- Top Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-shield-alt text-primary me-2"></i> FraudGuard
+            </a>
+            <div class="d-flex align-items-center">
+                <span class="live-indicator"></span>
+                <span class="text-muted small me-3">Live</span>
+                <button class="btn btn-outline-danger btn-sm" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+
+        <!-- Main Title -->
+        <div class="dashboard-header">
+            Fraud Detection Dashboard
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard-view" type="button" role="tab">
+                    <i class="fas fa-chart-line me-1"></i> Overview
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="recent-tab" data-bs-toggle="tab" data-bs-target="#recent-view" type="button" role="tab">
+                    <i class="fas fa-list me-1"></i> Recent Transactions
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="alerts-tab" data-bs-toggle="tab" data-bs-target="#alerts-view" type="button" role="tab">
+                    <i class="fas fa-exclamation-triangle me-1"></i> Alerts Review
+                    <span class="badge bg-danger ms-1" id="alertCountBadge">0</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+
+            <!-- TAB 1: DASHBOARD OVERVIEW -->
+            <div class="tab-pane fade show active" id="dashboard-view" role="tabpanel">
+
+                <!-- Filters & KPI Section -->
+                <div class="row mb-4">
+                    <!-- Filters -->
+                    <div class="col-md-4">
+                        <div class="kpi-card">
+                            <label class="form-label fw-bold">Filters</label>
+                            <div class="input-group mb-2">
+                                <select class="form-select" id="countryFilter">
+                                    <option value="ALL">All Countries</option>
+                                    <option value="USA">USA</option>
+                                    <option value="IND">India</option>
+                                    <option value="GBR">UK</option>
+                                    <option value="CAN">Canada</option>
+                                </select>
+                                <input type="text" class="form-control" id="accountIdFilter" placeholder="Account ID...">
+                            </div>
+                            <input type="text" class="form-control" id="transactionIdFilter" placeholder="Transaction ID...">
+                        </div>
+                    </div>
+
+                    <!-- KPI 1 -->
+                    <div class="col-md-4">
+                        <div class="kpi-card text-center">
+                            <div class="kpi-value" id="totalEvents">0</div>
+                            <div class="kpi-label">Total Events Predicted</div>
+                        </div>
+                    </div>
+
+                    <!-- KPI 2 -->
+                    <div class="col-md-4">
+                        <div class="kpi-card text-center">
+                            <div class="kpi-value" id="totalValue">$0.00</div>
+                            <div class="kpi-label">Total Event Value</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Summary Tables -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="table-container">
+                            <div class="table-header">Event Count by Fraud Risk</div>
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Fraud Risk</th>
+                                        <th>Event Count</th>
+                                        <th>Percent</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="riskCountTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="table-container">
+                            <div class="table-header">Value by Fraud Risk</div>
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Fraud Risk</th>
+                                        <th>Total Value</th>
+                                        <th>Avg Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="riskValueTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map and Country Table -->
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="table-container">
+                            <div class="table-header">Global Fraud Activity</div>
+                            <div id="world-map"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="table-container" style="height: 430px; overflow-y: auto;">
+                            <div class="table-header">Country vs Risk</div>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Country</th>
+                                        <th>Low</th>
+                                        <th>Med</th>
+                                        <th>High</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="countryTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Line Chart -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="chart-container">
+                            <div class="table-header">Event Count over Time</div>
+                            <canvas id="timeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: RECENT TRANSACTIONS (Redesigned) -->
+            <div class="tab-pane fade" id="recent-view" role="tabpanel">
+                <div class="table-container">
+                    <!-- Top Bar: Sub-nav and Search -->
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                        <!-- Sub Navigation -->
+                        <ul class="nav nav-pills sub-nav-pills" id="txnFilterTabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#" onclick="filterRecentTxns('ALL')">All Transactions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" onclick="filterRecentTxns('SUCCESS')">Success</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" onclick="filterRecentTxns('FAILED')">Failed</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" onclick="filterRecentTxns('PENDING')">Pending</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" onclick="filterRecentTxns('FRAUD')">Fraud Alerts</a>
+                            </li>
+                        </ul>
+
+                        <!-- Search & Refresh -->
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary refresh-btn" onclick="runSimulation('mixed')">
+                                <i class="fas fa-sync-alt me-1"></i> Refresh
+                            </button>
+                            <div class="input-group" style="width: 250px;">
+                                <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                                <input type="text" class="form-control border-start-0 ps-0" id="recentSearch" placeholder="Search..." oninput="filterRecentTxns()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Table -->
+                    <h5 class="mb-3">Transactions (<span id="txnListCount">0</span>)</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Amount</th>
+                                    <th>Currency</th>
+                                    <th>Sender Account</th>
+                                    <th>Receiver Account</th>
+                                    <th>Status</th>
+                                    <th>Fraud Flag</th>
+                                    <th>Fraud Reason</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentTxnBody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination Controls -->
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="changePage(-1)" id="prevBtn" disabled>Previous</button>
+                        <span class="text-muted small">Page <span id="currentPageSpan">1</span></span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="changePage(1)" id="nextBtn">Next</button>
+                    </div>
+
+                    <!-- Loading Indicator -->
+                    <div id="loadingIndicator" class="text-center py-3" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: ALERTS REVIEW -->
+            <div class="tab-pane fade" id="alerts-view" role="tabpanel">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="table-container">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="table-header mb-0">Actionable Alerts (Suspicious, Fraud & Pending)</div>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="fetchInitialData()">
+                                    <i class="fas fa-sync"></i> Refresh
+                                </button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle" id="alerts-table">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 10%">Txn ID</th>
+                                            <th style="width: 15%">Amount</th>
+                                            <th style="width: 15%">Account</th>
+                                            <th style="width: 10%">Status</th>
+                                            <th style="width: 10%">ML Score</th>
+                                            <th style="width: 20%">Reason</th>
+                                            <th style="width: 20%">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Populated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
     </div>
-    <h2>Live Transactions</h2>
-    <table id="transactions-table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Customer ID</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Rules Triggered</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
+
+    <!-- Review Modal -->
+    <div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">Review Pending Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted small">Transaction ID</label>
+                        <div id="modalTxnId" class="fs-5"></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="fw-bold text-muted small">Amount</label>
+                            <div id="modalAmount" class="fs-5 text-success fw-bold"></div>
+                        </div>
+                        <div class="col-6">
+                            <label class="fw-bold text-muted small">Account</label>
+                            <div id="modalAccount"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3 p-3 bg-light rounded border">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold">ML Risk Score:</span>
+                            <span id="modalMlScore" class="badge bg-primary"></span>
+                        </div>
+                        <div class="mb-1 fw-bold">Triggered Rules / Reason:</div>
+                        <div id="modalReason" class="text-danger small"></div>
+                    </div>
+                    <div class="alert alert-warning small">
+                        <i class="fas fa-info-circle me-1"></i> This transaction is in a <b>PENDING</b> state because it triggered 1-2 low-severity rules. Please review manually.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" onclick="confirmReviewAction('FRAUD')">
+                        <i class="fas fa-ban me-1"></i> Add to Fraud
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="confirmReviewAction('CLEARED')">
+                        <i class="fas fa-check me-1"></i> Mark Success
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 
     <script>
-        let chart;
-        let normalCount = 0;
-        let fraudCount = 0;
+        // --- Login Check ---
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = '/login';
+        }
 
-        function connect() {
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            window.location.href = '/login';
+        }
+
+        // --- Configuration ---
+        const API_URL = '/api/transactions';
+        const SIM_URL = '/api/simulation';
+
+        const countryData = {
+            "USA": { coords: [37.0902, -95.7129], currency: 'USD' },
+            "IND": { coords: [20.5937, 78.9629], currency: 'INR' },
+            "GBR": { coords: [55.3781, -3.4360], currency: 'GBP' },
+            "CAN": { coords: [56.1304, -106.3468], currency: 'CAD' },
+            "FRA": { coords: [46.2276, 2.2137], currency: 'EUR' },
+            "DEU": { coords: [51.1657, 10.4515], currency: 'EUR' }
+        };
+
+        let map, timeChart;
+        let allTransactions = [];
+        let updateTimeout;
+        let currentTxnFilter = 'ALL';
+        let currentPage = 0;
+        let isLastPage = false;
+        let isLoading = false;
+        const pageSize = 20;
+        let currentReviewId = null;
+        let reviewModal = null;
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            fetchInitialData();
+            fetchPagedTransactions(true); // Initial load for table
+            connectWebSocket();
+            reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
+        });
+
+        // Event Listeners for Filters
+        document.getElementById('countryFilter').addEventListener('change', scheduleUpdate);
+        document.getElementById('accountIdFilter').addEventListener('input', scheduleUpdate);
+        document.getElementById('transactionIdFilter').addEventListener('input', scheduleUpdate);
+
+        // Infinite Scroll Listener
+        window.addEventListener('scroll', () => {
+            if (isLoading || isLastPage) return;
+            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
+                changePage(1);
+            }
+        });
+
+        // --- Data Fetching (Initial Load for Charts) ---
+        function fetchInitialData() {
+            fetch(API_URL)
+                .then(res => res.json())
+                .then(data => {
+                    allTransactions = data;
+                    updateDashboard();
+                })
+                .catch(err => console.error("Error fetching data:", err));
+        }
+
+        // --- Paged Data Fetching ---
+        function fetchPagedTransactions(isNewFilter = false) {
+            if (isLoading) return;
+            isLoading = true;
+            document.getElementById('loadingIndicator').style.display = 'block';
+
+            const url = `${API_URL}/paged?page=${currentPage}&size=${pageSize}&status=${currentTxnFilter}`;
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    renderRecentTransactions(data.content, isNewFilter);
+                    updatePaginationInfo(data);
+                })
+                .catch(err => console.error("Error fetching paged data:", err))
+                .finally(() => {
+                    isLoading = false;
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                });
+        }
+
+        function updatePaginationInfo(pageData) {
+            document.getElementById('txnListCount').innerText = pageData.totalElements;
+            isLastPage = pageData.last;
+
+            document.getElementById('currentPageSpan').innerText = pageData.number + 1;
+            document.getElementById('prevBtn').disabled = pageData.first;
+            document.getElementById('nextBtn').disabled = pageData.last;
+        }
+
+        function changePage(delta) {
+            if (isLoading) return;
+            currentPage += delta;
+            fetchPagedTransactions();
+        }
+
+        // --- WebSocket Connection (Real-time Updates) ---
+        function connectWebSocket() {
             const socket = new SockJS('/ws');
             const stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+
             stompClient.connect({}, function (frame) {
-                console.log('Connected: ' + frame);
+                console.log('Connected to WebSocket');
                 stompClient.subscribe('/topic/transactions', function (transaction) {
-                    addTransactionToTable(JSON.parse(transaction.body));
+                    const newTxn = JSON.parse(transaction.body);
+
+                    // Update local cache for charts
+                    const existingIndex = allTransactions.findIndex(t => t.id === newTxn.id);
+                    if (existingIndex !== -1) {
+                        allTransactions[existingIndex] = newTxn;
+                    } else {
+                        allTransactions.push(newTxn);
+                    }
+
+                    // Debounce updates to prevent lag
+                    scheduleUpdate();
+
+                    // Refresh table if on first page to show new data
+                    if (currentPage === 0) {
+                        fetchPagedTransactions(true);
+                    }
                 });
+            }, function(error) {
+                console.error('WebSocket connection error:', error);
             });
         }
 
-        function addTransactionToTable(transaction) {
-            const tableBody = document.getElementById('transactions-table').getElementsByTagName('tbody')[0];
-            const newRow = tableBody.insertRow(0);
-            newRow.innerHTML = `
-                <td>${transaction.id}</td>
-                <td>${transaction.customerId}</td>
-                <td>${transaction.transactionAmount.toFixed(2)}</td>
-                <td>${transaction.status}</td>
-                <td>${transaction.riskRuleFlags || ''}</td>
-            `;
-
-            if (transaction.status === 'NORMAL') {
-                normalCount++;
-            } else {
-                fraudCount++;
-            }
-            updateChart();
+        // --- Debounced Update Logic ---
+        function scheduleUpdate() {
+            if (updateTimeout) clearTimeout(updateTimeout);
+            updateTimeout = setTimeout(updateDashboard, 300);
         }
 
-        function updateChart() {
-            chart.data.datasets[0].data = [normalCount, fraudCount];
-            chart.update();
+        // --- Core Logic ---
+        function updateDashboard() {
+            const selectedCountry = document.getElementById('countryFilter').value;
+            const accountIdFilter = document.getElementById('accountIdFilter').value.toLowerCase();
+            const transactionIdFilter = document.getElementById('transactionIdFilter').value;
+
+            // Filter Data
+            let filteredData = allTransactions.filter(t => {
+                const matchCountry = selectedCountry === 'ALL' || t.country === selectedCountry;
+                const matchAccount = !accountIdFilter || t.accountId.toLowerCase().includes(accountIdFilter);
+                const matchTxnId = !transactionIdFilter || String(t.id).includes(transactionIdFilter);
+                return matchCountry && matchAccount && matchTxnId;
+            });
+
+            // Determine currency for aggregate values
+            const aggregateCurrency = (selectedCountry !== 'ALL' && countryData[selectedCountry])
+                                      ? countryData[selectedCountry].currency
+                                      : 'USD';
+
+            // 1. Calculate KPIs
+            const totalCount = filteredData.length;
+            const totalVal = filteredData.reduce((sum, t) => sum + t.transactionAmount, 0);
+
+            document.getElementById('totalEvents').innerText = totalCount.toLocaleString();
+            document.getElementById('totalValue').innerText = formatCurrency(totalVal, aggregateCurrency);
+
+            // 2. Process Risk Groups
+            const stats = {
+                LOW: { count: 0, value: 0, label: 'Low', color: 'success', hex: '#28a745' },
+                MED: { count: 0, value: 0, label: 'Medium', color: 'warning', hex: '#ffc107' },
+                HIGH: { count: 0, value: 0, label: 'High', color: 'danger', hex: '#dc3545' }
+            };
+
+            filteredData.forEach(t => {
+                let key = 'LOW';
+                if (t.status === 'SUSPICIOUS' || t.status === 'PENDING') key = 'MED';
+                if (t.status === 'FRAUD' || t.status === 'CONFIRMED_FRAUD' || t.status === 'BLOCKED_ACCOUNT' || t.status === 'BLOCKED_PERMANENT' || t.status === 'BLOCKED_24H') key = 'HIGH';
+
+                stats[key].count++;
+                stats[key].value += t.transactionAmount;
+            });
+
+            // 3. Update Tables
+            updateRiskTables(stats, totalCount, aggregateCurrency);
+            updateCountryTable(filteredData);
+            updateAlertsTable(allTransactions);
+
+            // 4. Update Visuals
+            updateMap(filteredData);
+            updateChart(filteredData);
         }
 
-        function initialLoad() {
-            fetch('/api/dashboard/stats')
-                .then(response => response.json())
-                .then(data => {
-                    normalCount = data.normal;
-                    fraudCount = data.fraud;
-                    const ctx = document.getElementById('fraud-chart').getContext('2d');
-                    chart = new Chart(ctx, {
-                        type: 'pie',
-                        data: {
-                            labels: ['Normal', 'Fraud/Suspicious'],
-                            datasets: [{
-                                data: [normalCount, fraudCount],
-                                backgroundColor: ['#4CAF50', '#F44336'],
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            plugins: {
-                                legend: { position: 'top' },
-                                title: { display: true, text: 'Transaction Status' }
-                            }
-                        }
-                    });
+        // --- Recent Transactions Logic ---
+        function filterRecentTxns(filterType) {
+            if (filterType) {
+                currentTxnFilter = filterType;
+                currentPage = 0; // Reset to first page on filter change
+                isLastPage = false;
+
+                // Update active tab style
+                document.querySelectorAll('#txnFilterTabs .nav-link').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.innerText.toUpperCase().includes(filterType === 'FRAUD' ? 'FRAUD' : filterType) ||
+                        (filterType === 'ALL' && link.innerText.includes('All'))) {
+                        link.classList.add('active');
+                    }
                 });
+
+                fetchPagedTransactions(true); // Fetch new filtered data
+            } else {
+                renderRecentTransactions(allTransactions, false);
+            }
         }
 
-        connect();
-        initialLoad();
+        function renderRecentTransactions(data, clearTable) {
+            const tbody = document.getElementById('recentTxnBody');
+            if (clearTable) {
+                tbody.innerHTML = '';
+            }
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No transactions found.</td></tr>';
+                return;
+            }
+
+            data.forEach(t => {
+                let statusBadge = '';
+                let fraudFlag = '';
+                let fraudReason = '';
+                let rowClass = '';
+                let clickHandler = '';
+
+                // Status Badge Logic
+                if (t.status === 'PENDING') {
+                    statusBadge = `<span class="badge-pending">Pending</span>`;
+                    rowClass = 'clickable-row';
+                    clickHandler = `onclick="openReviewModal(${t.id}, '${t.transactionAmount}', '${t.currency}', '${t.accountId}', '${t.mlScore}', '${t.riskRuleFlags || 'Manual Review Required'}')"`;
+                } else if (t.status === 'NORMAL' || t.status === 'CLEARED') {
+                    statusBadge = `<span class="badge-success-custom">Success</span>`;
+                } else if (t.status === 'BLOCKED_ACCOUNT' || t.status === 'BLOCKED_PERMANENT' || t.status === 'BLOCKED_24H') {
+                    statusBadge = `<span class="badge-failed">Failed</span>`;
+                } else {
+                    statusBadge = `<span class="badge-failed">Review</span>`;
+                }
+
+                // Fraud Flag Logic
+                if (t.status === 'FRAUD' || t.status === 'SUSPICIOUS' || t.status === 'CONFIRMED_FRAUD') {
+                    fraudFlag = `<span class="badge-fraud-alert"><i class="fas fa-exclamation-triangle me-1"></i> Alert</span>`;
+                    fraudReason = `<span class="fraud-reason" title="${t.riskRuleFlags}">${t.riskRuleFlags || 'Suspicious Activity'}</span>`;
+                }
+
+                tbody.innerHTML += `
+                    <tr class="${rowClass}" ${clickHandler}>
+                        <td><a href="#" class="txn-id-link">#${t.id}</a></td>
+                        <td class="amount-text">${formatCurrency(t.transactionAmount, t.currency)}</td>
+                        <td>${t.currency}</td>
+                        <td>${t.accountId}</td>
+                        <td>${t.merchantId}</td>
+                        <td>${statusBadge}</td>
+                        <td>${fraudFlag}</td>
+                        <td>${fraudReason}</td>
+                        <td class="text-muted small">${new Date(t.txnTimestamp).toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateRiskTables(stats, total, currency) {
+            const countBody = document.getElementById('riskCountTable');
+            const valueBody = document.getElementById('riskValueTable');
+            countBody.innerHTML = '';
+            valueBody.innerHTML = '';
+
+            ['LOW', 'MED', 'HIGH'].forEach(key => {
+                const s = stats[key];
+                const pct = total > 0 ? ((s.count / total) * 100).toFixed(2) : 0;
+                const avg = s.count > 0 ? s.value / s.count : 0;
+
+                countBody.innerHTML += `
+                    <tr class="risk-row-${key.toLowerCase()}">
+                        <td><span class="badge bg-${s.color}">${s.label}</span></td>
+                        <td>${s.count}</td>
+                        <td>${pct}%</td>
+                    </tr>
+                `;
+
+                valueBody.innerHTML += `
+                    <tr class="risk-row-${key.toLowerCase()}">
+                        <td><span class="badge bg-${s.color}">${s.label}</span></td>
+                        <td>${formatCurrency(s.value, currency)}</td>
+                        <td>${formatCurrency(avg, currency)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateCountryTable(data) {
+            const countryStats = {};
+
+            data.forEach(t => {
+                if (!countryStats[t.country]) {
+                    countryStats[t.country] = { LOW: 0, MED: 0, HIGH: 0 };
+                }
+                let key = 'LOW';
+                if (t.status === 'SUSPICIOUS' || t.status === 'PENDING') key = 'MED';
+                if (t.status === 'FRAUD' || t.status === 'CONFIRMED_FRAUD' || t.status === 'BLOCKED_ACCOUNT' || t.status === 'BLOCKED_PERMANENT' || t.status === 'BLOCKED_24H') key = 'HIGH';
+                countryStats[t.country][key]++;
+            });
+
+            const tbody = document.getElementById('countryTable');
+            tbody.innerHTML = '';
+
+            Object.keys(countryStats).forEach(country => {
+                const s = countryStats[country];
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${country}</strong></td>
+                        <td class="text-success">${s.LOW}</td>
+                        <td class="text-warning">${s.MED}</td>
+                        <td class="text-danger">${s.HIGH}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateAlertsTable(data) {
+            const tbody = document.getElementById('alerts-table').getElementsByTagName('tbody')[0];
+            tbody.innerHTML = '';
+
+            const alerts = data.filter(t =>
+                t.status !== 'NORMAL' && t.status !== 'CLEARED'
+            );
+
+            alerts.sort((a, b) => b.id - a.id);
+
+            const actionableCount = alerts.filter(t => t.status === 'SUSPICIOUS' || t.status === 'FRAUD' || t.status === 'PENDING').length;
+            document.getElementById('alertCountBadge').innerText = actionableCount;
+
+            alerts.forEach(t => {
+                let statusBadge = '';
+                let actions = '';
+
+                switch(t.status) {
+                    case 'PENDING':
+                    case 'SUSPICIOUS':
+                    case 'FRAUD':
+                        statusBadge = `<span class="badge bg-warning text-dark">${t.status}</span>`;
+                        actions = `
+                            <div class="action-btn-group">
+                                <button class="btn btn-sm btn-success" onclick="reviewTransaction(${t.id}, 'CLEARED')"><i class="fas fa-check"></i> Success</button>
+                                <button class="btn btn-sm btn-danger" onclick="blockAccount('${t.accountId}', ${t.id}, 'PERMANENT')"><i class="fas fa-ban"></i> Block</button>
+                                <button class="btn btn-sm btn-warning text-dark" onclick="blockAccount('${t.accountId}', ${t.id}, '24H')"><i class="fas fa-clock"></i> Block 24h</button>
+                            </div>
+                        `;
+                        break;
+                    case 'CONFIRMED_FRAUD':
+                        statusBadge = `<span class="badge bg-dark">CONFIRMED</span>`;
+                        actions = `<span class="text-muted small">Reviewed</span>`;
+                        break;
+                    case 'BLOCKED_ACCOUNT':
+                    case 'BLOCKED_PERMANENT':
+                        statusBadge = `<span class="badge bg-secondary">BLOCKED</span>`;
+                        actions = `<span class="text-muted small">Account Blocked</span>`;
+                        break;
+                    case 'BLOCKED_24H':
+                        statusBadge = `<span class="badge bg-secondary">BLOCKED (24h)</span>`;
+                        actions = `<span class="text-muted small">Account Blocked</span>`;
+                        break;
+                }
+
+                const mlScorePercent = t.mlScore ? (t.mlScore * 100).toFixed(1) + '%' : '-';
+
+                tbody.innerHTML += `
+                    <tr id="alert-row-${t.id}">
+                        <td><a href="#" class="txn-id-link">#${t.id}</a></td>
+                        <td>${formatCurrency(t.transactionAmount, t.currency)}</td>
+                        <td>${t.accountId}</td>
+                        <td>${statusBadge}</td>
+                        <td>${mlScorePercent}</td>
+                        <td class="small text-muted">${t.riskRuleFlags || '-'}</td>
+                        <td>${actions}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // --- Modal Logic ---
+        function openReviewModal(id, amount, currency, account, mlScore, reason) {
+            currentReviewId = id;
+            document.getElementById('modalTxnId').innerText = '#' + id;
+            document.getElementById('modalAmount').innerText = formatCurrency(amount, currency);
+            document.getElementById('modalAccount').innerText = account;
+
+            const scoreVal = mlScore && mlScore !== 'undefined' ? (parseFloat(mlScore) * 100).toFixed(1) + '%' : 'N/A';
+            document.getElementById('modalMlScore').innerText = scoreVal;
+
+            document.getElementById('modalReason').innerText = reason;
+
+            reviewModal.show();
+        }
+
+        function confirmReviewAction(status) {
+            if (!currentReviewId) return;
+
+            if (status === 'FRAUD') {
+                reviewTransaction(currentReviewId, 'CONFIRMED_FRAUD');
+            } else {
+                reviewTransaction(currentReviewId, status);
+            }
+
+            reviewModal.hide();
+        }
+
+        // --- Simulation Action ---
+        function runSimulation(type) {
+            const endpoint = type === 'normal' ? '/run-normal' : '/run';
+
+            fetch(`${SIM_URL}${endpoint}?count=10`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    // Data will update via WebSocket automatically
+                })
+                .catch(err => console.error(err));
+        }
+
+        // --- Review Action ---
+        window.reviewTransaction = function(id, status) {
+            fetch(`${API_URL}/${id}/review?status=${status}`, { method: 'POST' })
+                .then(res => {
+                    if (res.ok) {
+                        // Immediate UI Update
+                        updateRowStatus(id, status);
+                    } else {
+                        alert('Error updating transaction status');
+                    }
+                });
+        };
+
+        window.blockAccount = function(accountId, transactionId, type) {
+            const reason = type === '24H' ? 'Account is blocked for 24 hours.' : 'Account is blocked permanently.';
+            const confirmMsg = type === '24H' ? `Block account ${accountId} for 24 hours?` : `Permanently block account ${accountId}?`;
+
+            if (confirm(confirmMsg)) {
+                fetch(`/api/accounts/${accountId}/block`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: reason, transactionId: String(transactionId) })
+                })
+                .then(res => {
+                    if (res.ok) {
+                        // Immediate UI Update
+                        const status = type === '24H' ? 'BLOCKED_24H' : 'BLOCKED_PERMANENT';
+                        updateRowStatus(transactionId, status);
+                        // Also update the transaction status in backend to reflect the block
+                        reviewTransaction(transactionId, status);
+                    } else {
+                        alert('Error blocking account');
+                    }
+                });
+            }
+        };
+
+        function updateRowStatus(id, status) {
+            const row = document.getElementById(`alert-row-${id}`);
+            if (row) {
+                const statusCell = row.cells[3];
+                const actionCell = row.cells[6];
+
+                let statusBadge = '';
+                let actions = '';
+
+                switch(status) {
+                    case 'CLEARED':
+                        statusBadge = `<span class="badge bg-info text-dark">CLEARED</span>`;
+                        actions = `<span class="text-muted small">Reviewed</span>`;
+                        break;
+                    case 'CONFIRMED_FRAUD':
+                        statusBadge = `<span class="badge bg-dark">CONFIRMED</span>`;
+                        actions = `<span class="text-muted small">Reviewed</span>`;
+                        break;
+                    case 'BLOCKED_PERMANENT':
+                        statusBadge = `<span class="badge bg-secondary">BLOCKED</span>`;
+                        actions = `<span class="text-muted small">Account Blocked</span>`;
+                        break;
+                    case 'BLOCKED_24H':
+                        statusBadge = `<span class="badge bg-secondary">BLOCKED (24h)</span>`;
+                        actions = `<span class="text-muted small">Account Blocked</span>`;
+                        break;
+                }
+
+                statusCell.innerHTML = statusBadge;
+                actionCell.innerHTML = actions;
+            }
+        }
+
+        // --- Map Logic ---
+        function initMap() {
+            map = L.map('world-map').setView([20, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        function updateMap(data) {
+            map.eachLayer((layer) => {
+                if (layer instanceof L.CircleMarker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            const countryCounts = {};
+            data.forEach(t => {
+                if (!countryCounts[t.country]) countryCounts[t.country] = 0;
+                countryCounts[t.country]++;
+            });
+
+            Object.keys(countryCounts).forEach(code => {
+                if (countryData[code]) {
+                    const count = countryCounts[code];
+                    const color = count > 50 ? '#dc3545' : (count > 20 ? '#ffc107' : '#28a745');
+
+                    L.circleMarker(countryData[code].coords, {
+                        radius: Math.min(count * 2, 30),
+                        color: color,
+                        fillColor: color,
+                        fillOpacity: 0.5
+                    })
+                    .bindTooltip(`<b>${code}</b><br>Events: ${count}`)
+                    .addTo(map);
+                }
+            });
+        }
+
+        // --- Chart Logic ---
+        function updateChart(data) {
+            const ctx = document.getElementById('timeChart').getContext('2d');
+            const timeGroups = {};
+
+            data.forEach(t => {
+                const date = new Date(t.txnTimestamp);
+                const key = date.getHours() + ':' + String(date.getMinutes()).padStart(2, '0');
+
+                if (!timeGroups[key]) timeGroups[key] = { LOW: 0, MED: 0, HIGH: 0 };
+
+                let risk = 'LOW';
+                if (t.status === 'SUSPICIOUS') risk = 'MED';
+                if (t.status === 'FRAUD' || t.status === 'CONFIRMED_FRAUD' || t.status === 'BLOCKED_ACCOUNT' || t.status === 'BLOCKED_PERMANENT' || t.status === 'BLOCKED_24H') risk = 'HIGH';
+
+                timeGroups[key][risk]++;
+            });
+
+            const labels = Object.keys(timeGroups).sort();
+            const lowData = labels.map(t => timeGroups[t].LOW);
+            const medData = labels.map(t => timeGroups[t].MED);
+            const highData = labels.map(t => timeGroups[t].HIGH);
+
+            if (timeChart) timeChart.destroy();
+
+            timeChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Low Risk', data: lowData, borderColor: '#28a745', tension: 0.4 },
+                        { label: 'Medium Risk', data: medData, borderColor: '#ffc107', tension: 0.4 },
+                        { label: 'High Risk', data: highData, borderColor: '#dc3545', tension: 0.4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // --- Helpers ---
+        function formatCurrency(num, currency = 'USD') {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency }).format(num);
+        }
     </script>
 </body>
 </html>

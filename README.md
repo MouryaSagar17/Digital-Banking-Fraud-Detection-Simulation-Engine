@@ -1,111 +1,119 @@
 # 📊 Digital Banking Fraud Detection Simulation Engine
 
-A real-time, rule-based fraud detection engine with a live simulation dashboard.
+A comprehensive, real-time fraud detection system simulating a digital banking environment. It features rule-based and ML-driven fraud detection, a live interactive dashboard, and a complete authentication system.
 
 ---
 
-## Overview
+## 🚀 Key Features
 
-This project provides an end-to-end simulation of a financial fraud detection system. It includes programmatic transaction generation, a robust rule-based evaluation engine, and a live web dashboard to monitor transactions in real-time.
+### 1. Fraud Detection Engine
+*   **Hybrid Detection:** Combines a **Rule Engine** (25+ rules like High Amount, Velocity, IP Risk) with a **Machine Learning Model** (Random Forest) for high accuracy.
+*   **Real-time Scoring:** Every transaction is instantly evaluated and assigned a risk score and status (`NORMAL`, `SUSPICIOUS`, `FRAUD`, `PENDING`).
+*   **Automated Actions:** High-confidence fraud triggers automatic email alerts to admins.
 
-- **Transaction Simulation**: Generate synthetic financial data via a REST API.
-- **Real-time Rule Engine**: Each transaction is evaluated against a comprehensive set of 25+ fraud detection rules.
-- **Live Dashboard**: A web-based UI visualizes transaction statuses (Normal vs. Fraud) and displays a live feed of incoming transactions using WebSockets.
-- **RESTful Control**: The entire system is controlled and monitored via a clean REST API.
+### 2. Interactive Dashboard
+*   **Live Monitoring:** Real-time updates via WebSockets (no page refresh needed).
+*   **Visual Analytics:** Charts for fraud distribution and time-series analysis, plus a global threat map.
+*   **Recent Transactions:** A paginated, filterable feed of all system activity.
+*   **Alerts Review:** A dedicated workflow for analysts to review, confirm, or clear suspicious transactions.
+*   **Account Blocking:** Ability to temporarily (24h) or permanently block suspicious accounts directly from the UI.
+
+### 3. Simulation & Control
+*   **Traffic Generator:** Built-in simulator to generate realistic traffic patterns (Normal, Fraud, Mixed).
+*   **Manual Control:** Trigger simulations on-demand from the dashboard or API.
+*   **Scenario Testing:** Pre-configured scenarios to test specific fraud rules (e.g., "High Amount", "Rapid Transactions").
+
+### 4. Security & Authentication
+*   **Dual Login:** Support for both **Password-based** and **OTP-based** login (via Email).
+*   **User Registration:** Secure sign-up with password strength validation.
+*   **Role-Based Access:** Dashboard is protected and requires authentication.
 
 ---
 
-## Features
-
-- **Comprehensive Rule Engine**: Implements over 25 rules, including high amount, velocity, IP risk, geolocation, and behavioral checks.
-- **Live Web Dashboard**: A Chart.js and WebSocket-powered interface to monitor the system in real-time.
-- **On-Demand Simulation**: Start and stop the transaction simulation via a dedicated API endpoint.
-- **REST API for Control & Retrieval**: Full API suite to process transactions, retrieve data (all, by date, fraud-only), and control the simulation.
-- **Input Validation**: Ensures data integrity for all incoming transactions.
-- **Clear Status Management**: Transactions are tracked with `PENDING`, `NORMAL`, `SUSPICIOUS`, and `FRAUD` statuses.
-- **Detailed API Testing Suite**: An `api-test.http` file is included for easy, one-click testing of all features.
+## 🛠️ Tech Stack
+*   **Backend:** Java 17, Spring Boot 3.3 (Web, Security, Data JPA, Mail, WebSocket)
+*   **Database:** MySQL 8.0
+*   **Machine Learning:** Weka 3.8 (Random Forest)
+*   **Frontend:** HTML5, Bootstrap 5, Chart.js, Leaflet.js, SockJS, Stomp.js
+*   **Tools:** Maven, IntelliJ IDEA
 
 ---
 
-## Architecture
+## ⚙️ Setup Instructions
 
-```text
-+----------------------+      +-------------------------+      +----------------------+
-|   API Test Client    |----->|   Transaction Simulator |----->|  Live Web Dashboard  |
-|  (api-test.http)     |      |    (Via REST API)       |      |      (index.html)    |
-+----------------------+      +-------------------------+      +----------+-----------+
-                                                                          | (WebSocket)
-                                                                          |
-          +---------------------------------------------------------------+
-          |
-          v
-+--------------------+      +----------------------+      +----------------------+
-|      REST API      |----->|  Fraud Rule Engine   |----->|       Database       |
-|  (Spring Boot)     |      | (25+ Detection Rules)|      |        (MySQL)       |
-+--------------------+      +----------------------+      +----------------------+
-```
-
-## Requirements
-- Java 17+
-- Maven
-- MySQL
-
-## Setup Instructions
-
-### 1. Clone the Repository
+### 1. Clone & Configure
 ```bash
 git clone https://github.com/MouryaSagar17/Digital-Banking-Fraud-Detection-Simulation-Engine
 cd Digital-Banking-Fraud-Detection-Simulation-Engine
 ```
 
-### 2. Create the MySQL Database
+### 2. Database Setup
+Create the database in MySQL:
 ```sql
 CREATE DATABASE fraud_demo;
 ```
-*Note: You do not need to create the `transactions` table manually. The application will do it for you.*
+*Note: Tables are automatically created by the application.*
 
-### 3. Configure Spring Boot
-Open `src/main/resources/application.properties` and set your MySQL username and password:
+### 3. Application Properties
+Update `src/main/resources/application.properties`:
 ```properties
+# Database
 spring.datasource.url=jdbc:mysql://localhost:3306/fraud_demo
-spring.datasource.username=root
-spring.datasource.password=your_password
+spring.datasource.username=YOUR_DB_USER
+spring.datasource.password=YOUR_DB_PASSWORD
 
-# This setting allows the application to create/update the database table automatically
-spring.jpa.hibernate.ddl-auto=update
+# Email (Required for OTP & Alerts)
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=YOUR_EMAIL@gmail.com
+spring.mail.password=YOUR_APP_PASSWORD
+app.admin.email=YOUR_EMAIL@gmail.com
 ```
 
-## How to Run
+### 4. Train ML Model (First Run Only)
+Run the `FraudModelTrainer` class to generate the `fraud_rf.model` file:
+*   Navigate to `src/main/java/org/example/ml/FraudModelTrainer.java`
+*   Right-click -> **Run 'FraudModelTrainer.main()'**
 
-### 1. Run the Application
-Start the Spring Boot application by running the `main` method in `FraudDetectionApplication.java`.
+### 5. Run Application
+Run the main class: `src/main/java/org/example/FraudDetectionApplication.java`
 
-### 2. View the Live Dashboard
-Open your web browser and navigate to:
-**[http://localhost:8080](http://localhost:8080)**
+---
 
-The dashboard will load, but no transactions will appear initially.
+## 🖥️ How to Use
 
-### 3. Start the Simulation
-To generate live data, you need to start the transaction simulator.
-- Open the `api-test.http` file in your IDE.
-- Find the request block labeled **MANUAL SIMULATION CONTROL**.
-- Click the "Run" icon next to `POST http://localhost:8080/api/simulation/run`.
+### 1. Login / Register
+*   Go to **http://localhost:8080/login**
+*   **Register** a new account or use the default admin (created on first run if configured).
+*   **Login** using Password or request an OTP to your email.
 
-This will generate 10 new transactions, which will appear in real-time on the dashboard.
+### 2. Dashboard Overview
+*   **Overview Tab:** View live KPIs, charts, and the global risk map.
+*   **Recent Transactions:** See a live feed of all transactions. Use the **"Refresh"** button to generate new simulated traffic.
+*   **Alerts Review:** Manage suspicious activities.
+    *   **Review:** Click a row to see details (ML Score, Rules).
+    *   **Action:** Click "Success" to clear or "Block" to suspend the account.
 
-## API Endpoints
+### 3. API Testing
+Use the included `api-test.http` file in IntelliJ to run specific test scenarios:
+*   `POST /api/simulation/run?count=10` (Generate Mixed Traffic)
+*   `POST /api/transactions` (Submit single transaction)
+*   `GET /api/alerts` (Fetch active alerts)
 
-- `POST /api/simulation/run?count={n}`: Generates `n` random transactions.
-- `POST /api/transactions`: Submits a single new transaction for processing.
-- `GET /api/transactions`: Retrieves all transactions.
-- `GET /api/transactions?startDate={...}&endDate={...}`: Retrieves transactions within a date range.
-- `GET /api/alerts`: Retrieves only transactions flagged as `SUSPICIOUS` or `FRAUD`.
-- `GET /api/transactions/{id}`: Retrieves a single transaction by its ID.
+---
 
-## Testing
-The included `api-test.http` file provides a complete suite for testing every feature of the application. Use it to:
-- Send valid, invalid, and fraudulent transactions.
-- Test all data retrieval endpoints.
-- Manually trigger the transaction simulator.
+## 📂 Project Structure
+```
+src/main/java/org/example
+├── auth           # Login, OTP, Email services
+├── client         # Transaction generators
+├── config         # Security & WebSocket config
+├── controller     # REST API endpoints
+├── dto            # Data Transfer Objects
+├── ml             # Weka ML training & prediction
+├── model          # JPA Entities (Transaction, User, BlockedAccount)
+├── repository     # Database access
+├── service        # Business logic & Rule Engine
+│   └── rules      # Individual fraud rules
+└── FraudDetectionApplication.java
 ```

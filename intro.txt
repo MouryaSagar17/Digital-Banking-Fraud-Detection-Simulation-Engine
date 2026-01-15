@@ -1,0 +1,157 @@
+# Digital Banking Fraud Detection Simulation Engine
+
+## Project Overview
+This project is a **Digital Banking Fraud Detection Simulation Engine** built with **Spring Boot**. It simulates financial transactions, processes them through a comprehensive rule-based fraud detection engine, stores the results in a **MySQL** database, and visualizes the data on a real-time **web dashboard**.
+
+---
+
+## 1. Core Domain & Data Model
+
+*   **`Transaction` Entity (`org.example.model.Transaction`)**:
+    *   The central JPA entity representing a financial transaction.
+    *   Stores standard fields: `customerId`, `amount`, `currency`, `timestamp`, `merchantId`, etc.
+    *   Stores fraud-specific fields: `ipRiskScore`, `ruleRiskScore`, `riskRuleFlags`, `status` (`NORMAL`, `SUSPICIOUS`, `FRAUD`), `deviceFingerprint`, `isNewDevice`, etc.
+*   **`TransactionRequest` DTO (`org.example.dto.TransactionRequest`)**:
+    *   Used for incoming API requests.
+    *   Includes **Jakarta Validation** annotations (`@NotNull`, `@Positive`, `@NotBlank`) to ensure data integrity before processing.
+
+## 2. Data Access Layer
+*   **`TransactionRepository` (`org.example.repository.TransactionRepository`)**:
+    *   A Spring Data JPA repository interface.
+    *   Provides standard CRUD operations.
+    *   Includes custom query methods:
+        *   `findByIsFraudLabel(boolean)`: For fetching alerts.
+        *   `findByTxnTimestampBetween(...)`: For date-range filtering.
+
+## 3. Fraud Detection Engine
+*   **`Rule` Interface (`org.example.service.rules.Rule`)**:
+    *   Defines the contract for all fraud rules: `boolean evaluate(Transaction t)` and `String getRuleName()`.
+*   **Rule Implementations**:
+    *   A suite of specific rules in `org.example.service.rules`:
+        *   **`HighAmountRule`**: Checks if amount > threshold.
+        *   **`IpRiskScoreRule`**: Checks if IP risk score is high.
+        *   **`ChannelValidationRule`**: Validates against allowed channels (WEB, MOBILE, POS).
+        *   **`CountryMismatchRule`**: Compares transaction country with account country.
+        *   **`VelocityRule` / `TransactionFrequencyRule`**: Detects rapid transactions.
+        *   **`TimeOfDayRule`**: Flags transactions at unusual hours.
+        *   **`NewDeviceRule`, `BlacklistRule`, `DormantToActiveSpikeRule`**, etc.
+*   **`CompositeRule`**: Aggregates all individual rules into a single list.
+*   **`RuleEngine` (`org.example.service.RuleEngine`)**:
+    *   Orchestrates the evaluation process.
+    *   Iterates through all rules for a given transaction.
+    *   Collects triggered rule names.
+    *   Determines the final status (`NORMAL`, `SUSPICIOUS`, `FRAUD`) based on the number of violations.
+
+## 4. Service Layer
+*   **`TransactionService` (`org.example.service.TransactionService`)**:
+    *   The main business logic coordinator.
+    *   **Process Flow**:
+        1.  Saves the initial transaction with `PENDING` status.
+        2.  Invokes the `RuleEngine` to evaluate the transaction.
+        3.  Updates the transaction with the final `status` and `riskRuleFlags`.
+        4.  Saves the updated transaction to the database.
+        5.  **Publishes the result to the WebSocket topic** (`/topic/transactions`) for the live dashboard.
+    *   Also handles data retrieval (get all, get by ID, get alerts, get by date).
+
+## 5. API Layer (Controllers)
+*   **`TransactionController` (`org.example.controller.TransactionController`)**:
+    *   `POST /api/transactions`: Receives and processes new transactions. Handles validation errors.
+    *   `GET /api/transactions`: Fetches all transactions (supports optional `startDate` and `endDate` params).
+    *   `GET /api/transactions/{id}`: Fetches a single transaction.
+*   **`AlertController` (`org.example.controller.AlertController`)**:
+    *   `GET /api/alerts`: Returns only transactions flagged as fraud/suspicious.
+*   **`SimulationController` (`org.example.controller.SimulationController`)**:
+    *   `POST /api/simulation/run?count={n}`: Manually triggers the generation of *n* random transactions.
+*   **`DashboardController` (`org.example.controller.DashboardController`)**:
+    *   `GET /`: Serves the `index.html` dashboard.
+    *   `GET /api/dashboard/stats`: Returns initial counts for the pie chart.
+
+## 6. Simulation & Client
+*   **`TransactionSimulator` (`org.example.TransactionSimulator`)**:
+    *   Contains logic to generate random, realistic transaction data (valid and fraudulent patterns).
+    *   Uses `TransactionClient` to send these generated transactions to the local API.
+*   **`TransactionClient` (`org.example.client.TransactionClient`)**:
+    *   A simple REST client (using `RestTemplate`) to send POST requests to the application's own API.
+*   **`DataInitializer` (`org.example.DataInitializer`)**:
+    *   A `CommandLineRunner` that can be used to run tasks on startup. (Currently configured to *not* run automatic simulation, leaving control to the manual API).
+
+## 7. Real-Time Dashboard (Frontend)
+*   **`index.html` (`src/main/resources/static/index.html`)**:
+    *   **Chart.js**: Displays a pie chart of Normal vs. Fraud transactions.
+    *   **SockJS & Stomp.js**: Connects to the backend WebSocket (`/ws`).
+    *   **Live Table**: Subscribes to `/topic/transactions` and dynamically adds new rows as transactions are processed.
+*   **`WebSocketConfig` (`org.example.config.WebSocketConfig`)**:
+    *   Configures the STOMP endpoint (`/ws`) and message broker (`/topic`).
+
+## 8. Testing
+*   **`api-test.http`**:
+    *   A comprehensive IntelliJ HTTP Client file.
+    *   Contains distinct, documented requests for every requirement: manual simulation, valid/invalid transaction creation, fraud scenarios, and all data retrieval endpoints.
+
+---
+
+## Summary of Flow
+1.  **Trigger**: User calls `POST /api/simulation/run` (or sends a single transaction via API).
+2.  **Generate**: `TransactionSimulator` creates random data.
+3.  **Ingest**: Data is sent to `TransactionController`.
+4.  **Validate**: `@Valid` checks basic constraints.
+5.  **Process**: `TransactionService` saves as `PENDING`, then calls `RuleEngine`.
+6.  **Evaluate**: `RuleEngine` runs 10+ rules (Amount, IP, Velocity, etc.).
+7.  **Decide**: Status is updated to `NORMAL`, `SUSPICIOUS`, or `FRAUD`.
+8.  **Persist**: Result saved to MySQL.
+9.  **Broadcast**: Result pushed via WebSocket.
+10. **Visualize**: Dashboard updates chart and table instantly.
+
+---
+
+## API Testing Script (Demo Guide)
+
+This section explains the purpose of each request in the `api-test.http` file, which is designed to demonstrate the system's capabilities step-by-step.
+
+### 1. Manual Simulation Control
+*   **Request:** `POST /api/simulation/run?count=10`
+*   **Purpose:** Triggers the simulation engine to generate 10 random transactions.
+*   **Demo Point:** "First, I'll start the simulation manually. This generates 10 transactions programmatically and sends them to our API, just like real-world traffic."
+
+### 2. Transaction Generation
+*   **Request:** `POST /api/transactions` (with valid data)
+*   **Purpose:** Simulates a single, programmatically generated transaction.
+*   **Demo Point:** "Here we simulate a single transaction being generated and sent to the API. This confirms our system can ingest data programmatically."
+
+### 3. API Layer
+*   **Request:** `POST /api/transactions` (with standard data)
+*   **Purpose:** Demonstrates the API receiving and processing a standard transaction.
+*   **Demo Point:** "This request shows the API layer in action. It receives the request, validates it, runs the rules, and returns the processed result."
+
+### 4. Validation Logic
+*   **Request:** `POST /api/transactions` (with invalid data, e.g., missing ID)
+*   **Purpose:** Tests the input validation logic.
+*   **Demo Point:** "Now, let's send invalid data. As you can see, the API rejects it with a clear error message, proving our validation logic works."
+
+### 5. Fraud Detection Rules
+*   **Request:** `POST /api/transactions` (with high amount)
+*   **Purpose:** Triggers a specific fraud rule (High Amount).
+*   **Demo Point:** "I'm sending a transaction with a very high amount ($60,000). The system correctly identifies this as FRAUD because it violates the High Amount Rule."
+
+### 6. Fraud Reason Tracking
+*   **Request:** `POST /api/transactions` (with invalid channel)
+*   **Purpose:** Triggers a different rule to show specific reason tracking.
+*   **Demo Point:** "Here is a transaction with an unknown channel. The system flags it and specifically records 'ChannelValidationRule' as the reason."
+
+### 7. Database Storage
+*   **Request:** `POST /api/transactions` (standard)
+*   **Purpose:** Creates a record to verify persistence.
+*   **Demo Point:** "I'll create one more transaction to verify it's stored in the database. We can check the ID returned in the response."
+
+### 8. API Endpoints for Data Retrieval
+*   **Requests:**
+    *   `GET /api/transactions`: Fetch all.
+    *   `GET /api/transactions?startDate=...`: Fetch by date.
+    *   `GET /api/alerts`: Fetch fraud only.
+*   **Purpose:** Demonstrates the reporting capabilities.
+*   **Demo Point:** "Finally, we can retrieve data. Here are all transactions... here are transactions from a specific date range... and here are just the fraud alerts."
+
+### 9. Status Management
+*   **Request:** `POST /api/transactions` (valid)
+*   **Purpose:** Verifies the final status is set correctly.
+*   **Demo Point:** "This final test confirms that a clean transaction is correctly marked with the status 'NORMAL'."

@@ -1,11 +1,20 @@
 ### ==================================================================================
-### MANUAL SIMULATION CONTROL
+### MANUAL SIMULATION CONTROL (MIXED)
 ### ==================================================================================
 ### Requirement:
 ### - Start the transaction generation manually via an API call.
 ###
-### TEST CASE: Run the simulation to generate 10 transactions
+### TEST CASE: Run the simulation to generate 10 mixed (valid/fraud) transactions
 POST http://localhost:8080/api/simulation/run?count=10
+
+### ==================================================================================
+### MANUAL SIMULATION CONTROL (NORMAL ONLY)
+### ==================================================================================
+### Requirement:
+### - Generate a batch of purely NORMAL transactions to populate the dashboard baseline.
+###
+### TEST CASE: Run the simulation to generate 10 NORMAL transactions
+POST http://localhost:8080/api/simulation/run-normal?count=10
 
 
 ### ==================================================================================
@@ -157,6 +166,17 @@ GET http://localhost:8080/api/transactions?startDate=2023-01-01T00:00:00&endDate
 GET http://localhost:8080/api/alerts
 
 ### ==================================================================================
+### TASK 6: ALERT VIEW & FILTER APIs
+### ==================================================================================
+### Requirement: Filter alerts by risk level and rule name.
+###
+### TEST CASE: Get High Risk Alerts (Score > 50)
+GET http://localhost:8080/api/alerts/high-risk
+
+### TEST CASE: Get Alerts by Rule Name (e.g., HighAmountRule)
+GET http://localhost:8080/api/alerts/by-rule/HighAmountRule
+
+### ==================================================================================
 ### 8. Status Management
 ### ==================================================================================
 ### Requirement: Each transaction must have a clear state (Pending, Successful, Fraud).
@@ -174,4 +194,27 @@ Content-Type: application/json
   "merchantId": "MERCH_007",
   "merchantCategory": "books",
   "ipAddress": "10.0.0.7"
+}
+
+### ==================================================================================
+### MANUAL TEST - BLOCKED ACCOUNT VERIFICATION
+### ==================================================================================
+### Requirement: Verify that transactions from a blocked account are automatically rejected.
+###
+### Step 1: Create a transaction for a specific account (e.g., ACC_BLOCK_TEST)
+### Step 2: Go to Dashboard -> Alerts Review -> Click "Lock" icon for this transaction.
+### Step 3: Run this request again. It should now show status: "BLOCKED_ACCOUNT"
+POST http://localhost:8080/api/transactions
+Content-Type: application/json
+
+{
+  "customerId": "CUST_BLOCK_TEST",
+  "accountId": "ACC_BLOCK_TEST",
+  "transactionAmount": 1000.00,
+  "currency": "USD",
+  "channel": "WEB",
+  "country": "USA",
+  "merchantId": "MERCH_TEST",
+  "merchantCategory": "electronics",
+  "ipAddress": "192.168.1.50"
 }

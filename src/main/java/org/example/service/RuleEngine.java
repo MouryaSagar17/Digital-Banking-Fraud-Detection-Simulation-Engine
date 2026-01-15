@@ -24,13 +24,20 @@ public class RuleEngine {
                 .collect(Collectors.toList());
     }
 
+    public int calculateRiskScore(List<String> triggeredRules) {
+        int score = triggeredRules.size() * 20;
+        if (triggeredRules.contains("HighAmountRule")) score += 30;
+        if (triggeredRules.contains("BlacklistRule")) score += 50;
+        return Math.min(score, 100);
+    }
+
     public String getFinalStatus(List<String> triggeredRules) {
         if (triggeredRules.isEmpty()) {
             return "NORMAL";
-        } else if (triggeredRules.size() <= 2) {
-            return "SUSPICIOUS";
+        } else if (triggeredRules.size() <= 2 && !triggeredRules.contains("BlacklistRule")) {
+            return "PENDING"; // 1-2 rules -> Pending Review
         } else {
-            return "FRAUD";
+            return "FRAUD"; // >2 rules or Blacklist -> Fraud
         }
     }
 }
