@@ -19,19 +19,32 @@
             --risk-low: #28a745;
             --risk-med: #ffc107;
             --risk-high: #dc3545;
+            --risk-critical: #721c24;
         }
 
         body {
             background-color: var(--primary-bg);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden; /* Prevent body scroll */
+            display: flex;
+            flex-direction: column;
         }
 
         /* Top Navigation */
         .navbar {
             background-color: var(--card-bg);
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-shrink: 0;
         }
         .breadcrumb { margin-bottom: 0; }
+
+        /* Main Content Area */
+        .main-content {
+            flex-grow: 1;
+            overflow-y: auto; /* Scrollable content */
+            padding: 20px;
+        }
 
         /* Header */
         .dashboard-header {
@@ -66,8 +79,24 @@
             padding: 15px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100%; /* Fill available height */
         }
-        .table-header { font-weight: bold; margin-bottom: 10px; color: #555; }
+        .table-header { font-weight: bold; margin-bottom: 10px; color: #555; flex-shrink: 0; }
+
+        /* Scrollable Table Body */
+        .table-responsive {
+            overflow-y: auto;
+            max-height: 600px; /* Fixed height for single frame feel */
+        }
+        thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa;
+            z-index: 1;
+        }
+
         .risk-row-low { border-left: 5px solid var(--risk-low); }
         .risk-row-med { border-left: 5px solid var(--risk-med); }
         .risk-row-high { border-left: 5px solid var(--risk-high); }
@@ -202,6 +231,42 @@
             display: flex;
             gap: 5px;
         }
+
+        /* Filter Panel Styles */
+        .filter-panel {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .filter-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #6c757d;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .filter-select {
+            font-size: 0.9rem;
+            padding: 6px 12px;
+        }
+        .action-toolbar {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        /* Priority Badges */
+        .badge-priority-critical { background-color: #dc3545; color: white; }
+        .badge-priority-high { background-color: #fd7e14; color: white; }
+        .badge-priority-medium { background-color: #ffc107; color: black; }
+        .badge-priority-low { background-color: #198754; color: white; }
+
+        /* ML Score Badges */
+        .badge-ml-high { background-color: #dc3545; color: white; }
+        .badge-ml-med { background-color: #fd7e14; color: white; }
+        .badge-ml-low { background-color: #ffc107; color: black; }
     </style>
 </head>
 <body>
@@ -220,7 +285,7 @@
         </div>
     </nav>
 
-    <div class="container-fluid px-4">
+    <div class="main-content container-fluid px-4">
 
         <!-- Main Title -->
         <div class="dashboard-header">
@@ -266,9 +331,7 @@
                                     <option value="GBR">UK</option>
                                     <option value="CAN">Canada</option>
                                 </select>
-                                <input type="text" class="form-control" id="accountIdFilter" placeholder="Account ID...">
                             </div>
-                            <input type="text" class="form-control" id="transactionIdFilter" placeholder="Transaction ID...">
                         </div>
                     </div>
 
@@ -389,6 +452,9 @@
                             <button class="btn btn-primary refresh-btn" onclick="runSimulation('mixed')">
                                 <i class="fas fa-sync-alt me-1"></i> Refresh
                             </button>
+                            <button class="btn btn-outline-secondary refresh-btn" onclick="exportTransactions()">
+                                <i class="fas fa-file-csv me-1"></i> Export CSV
+                            </button>
                             <div class="input-group" style="width: 250px;">
                                 <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
                                 <input type="text" class="form-control border-start-0 ps-0" id="recentSearch" placeholder="Search..." oninput="filterRecentTxns()">
@@ -398,14 +464,14 @@
 
                     <!-- Main Table -->
                     <h5 class="mb-3">Transactions (<span id="txnListCount">0</span>)</h5>
-                    <div class="table-responsive">
+                    <div class="table-responsive" id="recentTxnContainer">
                         <table class="table table-hover align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Transaction ID</th>
+                                    <th>Txn ID</th>
+                                    <th>Account ID</th>
                                     <th>Amount</th>
                                     <th>Currency</th>
-                                    <th>Sender Account</th>
                                     <th>Receiver Account</th>
                                     <th>Status</th>
                                     <th>Fraud Flag</th>
@@ -417,19 +483,11 @@
                                 <!-- Populated by JS -->
                             </tbody>
                         </table>
-                    </div>
-
-                    <!-- Pagination Controls -->
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="changePage(-1)" id="prevBtn" disabled>Previous</button>
-                        <span class="text-muted small">Page <span id="currentPageSpan">1</span></span>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="changePage(1)" id="nextBtn">Next</button>
-                    </div>
-
-                    <!-- Loading Indicator -->
-                    <div id="loadingIndicator" class="text-center py-3" style="display: none;">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
+                        <!-- Loading Indicator -->
+                        <div id="loadingIndicator" class="text-center py-3" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -440,29 +498,91 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="table-container">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div class="table-header mb-0">Actionable Alerts (Suspicious, Fraud & Pending)</div>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="fetchInitialData()">
-                                    <i class="fas fa-sync"></i> Refresh
-                                </button>
+
+                            <!-- New Filters & Controls Panel -->
+                            <div class="filter-panel">
+                                <div class="row g-3 align-items-end">
+                                    <!-- Search -->
+                                    <div class="col-md-3">
+                                        <label class="filter-label">Search Alerts</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                                            <input type="text" class="form-control" id="alertSearch" placeholder="ID, User, Description...">
+                                        </div>
+                                    </div>
+
+                                    <!-- Filters -->
+                                    <div class="col-md-2">
+                                        <label class="filter-label">Risk Level</label>
+                                        <select class="form-select filter-select" id="alertRiskFilter">
+                                            <option value="ALL">All Levels</option>
+                                            <option value="HIGH">High Risk</option>
+                                            <option value="MED">Medium Risk</option>
+                                            <option value="LOW">Low Risk</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="filter-label">Status</label>
+                                        <select class="form-select filter-select" id="alertStatusFilter">
+                                            <option value="ALL">All Statuses</option>
+                                            <option value="PENDING">Pending</option>
+                                            <option value="RESOLVED">Resolved</option>
+                                            <option value="BLOCKED">Blocked</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Sort -->
+                                    <div class="col-md-2">
+                                        <label class="filter-label">Sort By</label>
+                                        <select class="form-select filter-select" id="alertSort">
+                                            <option value="newest">Most Recent</option>
+                                            <option value="risk_desc">Highest Risk</option>
+                                            <option value="ml_desc">Highest ML Score</option>
+                                            <option value="amount_desc">Highest Amount</option>
+                                            <option value="oldest">Oldest</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Reset -->
+                                    <div class="col-md-1">
+                                        <button class="btn btn-outline-secondary w-100" onclick="resetAlertFilters()">Reset</button>
+                                    </div>
+
+                                    <!-- Action Toolbar -->
+                                    <div class="col-md-2">
+                                        <div class="action-toolbar">
+                                            <button class="btn btn-primary btn-sm" onclick="openManualTxnModal()" title="Add Transaction"><i class="fas fa-plus"></i></button>
+                                            <button class="btn btn-outline-secondary btn-sm" onclick="exportTransactions()" title="Export"><i class="fas fa-download"></i></button>
+                                            <button class="btn btn-outline-secondary btn-sm" onclick="fetchInitialData()" title="Refresh"><i class="fas fa-sync"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="table-responsive">
+
+                            <div class="table-responsive" id="alertsContainer" style="max-height: 600px; overflow-y: auto;">
                                 <table class="table table-hover align-middle" id="alerts-table">
                                     <thead class="table-light">
                                         <tr>
                                             <th style="width: 10%">Txn ID</th>
+                                            <th style="width: 10%">Priority</th>
                                             <th style="width: 15%">Amount</th>
                                             <th style="width: 15%">Account</th>
                                             <th style="width: 10%">Status</th>
                                             <th style="width: 10%">ML Score</th>
-                                            <th style="width: 20%">Reason</th>
-                                            <th style="width: 20%">Action</th>
+                                            <th style="width: 15%">Fraud Reason</th>
+                                            <th style="width: 15%">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="alertsBody">
                                         <!-- Populated by JS -->
                                     </tbody>
                                 </table>
+                                <!-- Loading Indicator -->
+                                <div id="alertLoadingIndicator" class="text-center py-3" style="display: none;">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -472,49 +592,179 @@
         </div>
     </div>
 
-    <!-- Review Modal -->
-    <div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+    <!-- Pending Review Modal (Recent Transactions) -->
+    <div class="modal fade" id="pendingReviewModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title">Review Pending Transaction</h5>
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-light border-bottom-0">
+                    <h5 class="modal-title fw-bold">Review Pending Transaction</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div class="mb-3">
                         <label class="fw-bold text-muted small">Transaction ID</label>
-                        <div id="modalTxnId" class="fs-5"></div>
+                        <div id="pendingModalTxnId" class="fs-5 font-monospace text-primary"></div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
                             <label class="fw-bold text-muted small">Amount</label>
-                            <div id="modalAmount" class="fs-5 text-success fw-bold"></div>
+                            <div id="pendingModalAmount" class="fs-5 text-success fw-bold"></div>
                         </div>
                         <div class="col-6">
                             <label class="fw-bold text-muted small">Account</label>
-                            <div id="modalAccount"></div>
+                            <div id="pendingModalAccount"></div>
                         </div>
                     </div>
                     <div class="mb-3 p-3 bg-light rounded border">
                         <div class="d-flex justify-content-between mb-2">
-                            <span class="fw-bold">ML Risk Score:</span>
-                            <span id="modalMlScore" class="badge bg-primary"></span>
+                            <span class="fw-bold text-dark">ML Risk Score</span>
+                            <span id="pendingModalMlScore" class="badge bg-primary rounded-pill"></span>
                         </div>
-                        <div class="mb-1 fw-bold">Triggered Rules / Reason:</div>
-                        <div id="modalReason" class="text-danger small"></div>
+                        <div class="fw-bold text-dark mb-1">Triggered Rules</div>
+                        <div id="pendingModalReason" class="text-danger small"></div>
                     </div>
                     <div class="alert alert-warning small">
-                        <i class="fas fa-info-circle me-1"></i> This transaction is in a <b>PENDING</b> state because it triggered 1-2 low-severity rules. Please review manually.
+                        <i class="fas fa-info-circle me-1"></i> This transaction is <b>PENDING</b>. Please verify.
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" onclick="confirmReviewAction('FRAUD')">
-                        <i class="fas fa-ban me-1"></i> Add to Fraud
+                <div class="modal-footer border-top-0 pt-0 pb-4 px-4">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-outline-danger" onclick="confirmReviewAction('FRAUD')">
+                        <i class="fas fa-ban me-1"></i> Confirm Fraud
                     </button>
                     <button type="button" class="btn btn-success" onclick="confirmReviewAction('CLEARED')">
-                        <i class="fas fa-check me-1"></i> Mark Success
+                        <i class="fas fa-check me-1"></i> Approve
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Action Modal (Alerts Review) -->
+    <div class="modal fade" id="alertActionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-danger text-white border-bottom-0">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i> Take Action on Alert</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row">
+                        <div class="col-md-6 border-end">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-3">Transaction Details</h6>
+                            <div class="mb-3">
+                                <label class="text-muted small">Transaction ID</label>
+                                <div id="alertModalTxnId" class="fs-5 font-monospace text-primary"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small">Amount</label>
+                                <div id="alertModalAmount" class="fs-4 fw-bold text-success"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small">Account ID</label>
+                                <div id="alertModalAccount" class="fs-6"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 ps-4">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-3">Risk Analysis</h6>
+                            <div class="p-3 bg-light rounded-3 border mb-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span class="fw-bold text-dark">ML Risk Score</span>
+                                    <span id="alertModalMlScore" class="badge bg-danger rounded-pill"></span>
+                                </div>
+                                <div class="fw-bold text-dark mb-1">Triggered Rules</div>
+                                <div id="alertModalReason" class="text-danger small"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Resolution Note</label>
+                                <textarea class="form-control" id="alertResolutionNote" rows="2" placeholder="Enter reason for decision..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 pb-4 px-4 bg-light">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-success" onclick="confirmReviewAction('CLEARED')"><i class="fas fa-check me-1"></i> Clear Alert</button>
+                        <button type="button" class="btn btn-warning text-dark" onclick="triggerBlockAccount('24H')"><i class="fas fa-clock me-1"></i> Block 24h</button>
+                        <button type="button" class="btn btn-danger" onclick="triggerBlockAccount('PERMANENT')"><i class="fas fa-ban me-1"></i> Block Permanent</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manual Transaction Modal -->
+    <div class="modal fade" id="manualTxnModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Manual Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="manualTxnForm">
+                        <div class="mb-3">
+                            <label class="form-label">Customer ID</label>
+                            <input type="text" class="form-control" id="manCustId" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Account ID</label>
+                            <input type="text" class="form-control" id="manAccId" required>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Amount</label>
+                                <input type="number" class="form-control" id="manAmount" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Currency</label>
+                                <select class="form-select" id="manCurrency">
+                                    <option value="USD">USD</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="GBP">GBP</option>
+                                    <option value="INR">INR</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Country</label>
+                            <select class="form-select" id="manCountry">
+                                <option value="USA">USA</option>
+                                <option value="IND">India</option>
+                                <option value="GBR">UK</option>
+                                <option value="CAN">Canada</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Channel</label>
+                            <select class="form-select" id="manChannel">
+                                <option value="WEB">WEB</option>
+                                <option value="MOBILE">MOBILE</option>
+                                <option value="POS">POS</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="submitManualTransaction()">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="fas fa-info-circle me-2 text-primary"></i>
+                <strong class="me-auto">Notification</strong>
+                <small>Just now</small>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                Action completed successfully.
             </div>
         </div>
     </div>
@@ -558,40 +808,105 @@
         let isLastPage = false;
         let isLoading = false;
         const pageSize = 20;
+
+        // Alerts Pagination
+        let alertPage = 0;
+        let isAlertLastPage = false;
+        let isAlertLoading = false;
+
         let currentReviewId = null;
-        let reviewModal = null;
+        let currentReviewAccount = null;
+        let pendingReviewModal = null;
+        let alertActionModal = null;
+        let manualTxnModal = null;
+        let toast = null;
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
             initMap();
             fetchInitialData();
             fetchPagedTransactions(true); // Initial load for table
+            fetchAlertsData(true); // Initial load for alerts
             connectWebSocket();
-            reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
+            pendingReviewModal = new bootstrap.Modal(document.getElementById('pendingReviewModal'));
+            alertActionModal = new bootstrap.Modal(document.getElementById('alertActionModal'));
+            manualTxnModal = new bootstrap.Modal(document.getElementById('manualTxnModal'));
+            toast = new bootstrap.Toast(document.getElementById('liveToast'));
         });
 
         // Event Listeners for Filters
-        document.getElementById('countryFilter').addEventListener('change', scheduleUpdate);
-        document.getElementById('accountIdFilter').addEventListener('input', scheduleUpdate);
-        document.getElementById('transactionIdFilter').addEventListener('input', scheduleUpdate);
+        document.getElementById('countryFilter').addEventListener('change', fetchInitialData);
 
-        // Infinite Scroll Listener
-        window.addEventListener('scroll', () => {
-            if (isLoading || isLastPage) return;
-            if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
-                changePage(1);
-            }
-        });
+        // Alerts Filters
+        document.getElementById('alertSearch').addEventListener('input', () => { alertPage = 0; fetchAlertsData(true); });
+        document.getElementById('alertRiskFilter').addEventListener('change', () => { alertPage = 0; fetchAlertsData(true); });
+        document.getElementById('alertStatusFilter').addEventListener('change', () => { alertPage = 0; fetchAlertsData(true); });
+        document.getElementById('alertSort').addEventListener('change', () => { alertPage = 0; fetchAlertsData(true); });
+
+        // Infinite Scroll Listener (Recent Transactions)
+        const recentTxnContainer = document.getElementById('recentTxnContainer');
+        if (recentTxnContainer) {
+            recentTxnContainer.addEventListener('scroll', () => {
+                if (isLoading || isLastPage) return;
+                if ((recentTxnContainer.scrollTop + recentTxnContainer.clientHeight) >= recentTxnContainer.scrollHeight - 50) {
+                    changePage(1);
+                }
+            });
+        }
+
+        // Infinite Scroll Listener (Alerts)
+        const alertsContainer = document.getElementById('alertsContainer');
+        if (alertsContainer) {
+            alertsContainer.addEventListener('scroll', () => {
+                if (isAlertLoading || isAlertLastPage) return;
+                if ((alertsContainer.scrollTop + alertsContainer.clientHeight) >= alertsContainer.scrollHeight - 50) {
+                    changeAlertPage(1);
+                }
+            });
+        }
+
+        // --- Toast Notification ---
+        function showToast(message) {
+            document.getElementById('toastMessage').innerText = message;
+            toast.show();
+        }
 
         // --- Data Fetching (Initial Load for Charts) ---
         function fetchInitialData() {
-            fetch(API_URL)
+            const country = document.getElementById('countryFilter').value;
+            fetch(`/api/dashboard/stats?country=${country}`)
                 .then(res => res.json())
                 .then(data => {
-                    allTransactions = data;
-                    updateDashboard();
+                    // Update KPIs
+                    document.getElementById('totalEvents').innerText = data.totalTransactions.toLocaleString();
+
+                    // Determine currency for aggregate values
+                    const aggregateCurrency = (country !== 'ALL' && countryData[country])
+                                              ? countryData[country].currency
+                                              : 'USD';
+                    document.getElementById('totalValue').innerText = formatCurrency(data.totalVolume, aggregateCurrency);
+
+                    // Update Tables
+                    updateRiskTables(data.riskCounts, data.riskVolumes, data.totalTransactions, aggregateCurrency);
+                    updateCountryTable(data.countryRiskStats);
+
+                    // Fetch a subset of data for charts
+                    fetchTransactionsForCharts(country);
                 })
-                .catch(err => console.error("Error fetching data:", err));
+                .catch(err => console.error("Error fetching stats:", err));
+        }
+
+        function fetchTransactionsForCharts(country) {
+             fetch(`${API_URL}?size=100`)
+                .then(res => res.json())
+                .then(data => {
+                    let filteredData = data;
+                    if (country !== 'ALL') {
+                        filteredData = data.filter(t => t.country === country);
+                    }
+                    updateMap(filteredData);
+                    updateChart(filteredData);
+                });
         }
 
         // --- Paged Data Fetching ---
@@ -600,7 +915,15 @@
             isLoading = true;
             document.getElementById('loadingIndicator').style.display = 'block';
 
-            const url = `${API_URL}/paged?page=${currentPage}&size=${pageSize}&status=${currentTxnFilter}`;
+            // Get search value
+            const searchVal = document.getElementById('recentSearch').value;
+
+            // Build URL with search param
+            let url = `${API_URL}/paged?page=${currentPage}&size=${pageSize}&status=${currentTxnFilter}`;
+            if (searchVal) {
+                url += `&search=${encodeURIComponent(searchVal)}`;
+            }
+
             fetch(url)
                 .then(res => res.json())
                 .then(data => {
@@ -629,6 +952,100 @@
             fetchPagedTransactions();
         }
 
+        // --- Alerts Data Fetching ---
+        function fetchAlertsData(isNewFilter = false) {
+            if (isAlertLoading) return;
+            isAlertLoading = true;
+            document.getElementById('alertLoadingIndicator').style.display = 'block';
+
+            const search = document.getElementById('alertSearch').value;
+            const risk = document.getElementById('alertRiskFilter').value;
+            const status = document.getElementById('alertStatusFilter').value;
+            const sort = document.getElementById('alertSort').value;
+
+            let url = `${API_URL}/paged?page=${alertPage}&size=${pageSize}&riskLevel=${risk}&status=${status}&sortBy=${sort}`;
+            if (search) {
+                url += `&search=${encodeURIComponent(search)}`;
+            }
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    updateAlertsTable(data.content, isNewFilter);
+                    updateAlertPagination(data);
+                    isAlertLastPage = data.last;
+                })
+                .catch(err => console.error("Error fetching alerts:", err))
+                .finally(() => {
+                    isAlertLoading = false;
+                    document.getElementById('alertLoadingIndicator').style.display = 'none';
+                });
+        }
+
+        function updateAlertPagination(pageData) {
+            document.getElementById('alertCountBadge').innerText = pageData.totalElements;
+            document.getElementById('alertCurrentPageSpan').innerText = pageData.number + 1;
+            document.getElementById('alertPrevBtn').disabled = pageData.first;
+            document.getElementById('alertNextBtn').disabled = pageData.last;
+        }
+
+        function changeAlertPage(delta) {
+            if (isAlertLoading) return;
+            alertPage += delta;
+            fetchAlertsData();
+        }
+
+        function resetAlertFilters() {
+            document.getElementById('alertSearch').value = '';
+            document.getElementById('alertRiskFilter').value = 'ALL';
+            document.getElementById('alertStatusFilter').value = 'ALL';
+            document.getElementById('alertSort').value = 'newest';
+            alertPage = 0;
+            fetchAlertsData(true);
+        }
+
+        // --- Export CSV ---
+        function exportTransactions() {
+            const searchVal = document.getElementById('recentSearch').value;
+            let url = `${API_URL}/export?status=${currentTxnFilter}`;
+            if (searchVal) {
+                url += `&search=${encodeURIComponent(searchVal)}`;
+            }
+            window.location.href = url;
+        }
+
+        // --- Manual Transaction ---
+        function openManualTxnModal() {
+            manualTxnModal.show();
+        }
+
+        function submitManualTransaction() {
+            const data = {
+                customerId: document.getElementById('manCustId').value,
+                accountId: document.getElementById('manAccId').value,
+                transactionAmount: parseFloat(document.getElementById('manAmount').value),
+                currency: document.getElementById('manCurrency').value,
+                country: document.getElementById('manCountry').value,
+                channel: document.getElementById('manChannel').value,
+                merchantId: 'MANUAL_MERCH',
+                merchantCategory: 'misc',
+                ipAddress: '127.0.0.1'
+            };
+
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast('Transaction submitted successfully.');
+                manualTxnModal.hide();
+                // Refresh will happen via WebSocket
+            })
+            .catch(err => alert('Error submitting transaction'));
+        }
+
         // --- WebSocket Connection (Real-time Updates) ---
         function connectWebSocket() {
             const socket = new SockJS('/ws');
@@ -655,6 +1072,11 @@
                     if (currentPage === 0) {
                         fetchPagedTransactions(true);
                     }
+
+                    // Refresh alerts if relevant
+                    if (['FRAUD', 'SUSPICIOUS', 'PENDING'].includes(newTxn.status)) {
+                        if (alertPage === 0) fetchAlertsData(true);
+                    }
                 });
             }, function(error) {
                 console.error('WebSocket connection error:', error);
@@ -664,57 +1086,25 @@
         // --- Debounced Update Logic ---
         function scheduleUpdate() {
             if (updateTimeout) clearTimeout(updateTimeout);
-            updateTimeout = setTimeout(updateDashboard, 300);
+            updateTimeout = setTimeout(updateDashboardUI, 300);
         }
 
         // --- Core Logic ---
-        function updateDashboard() {
+        function updateDashboardUI() {
             const selectedCountry = document.getElementById('countryFilter').value;
-            const accountIdFilter = document.getElementById('accountIdFilter').value.toLowerCase();
-            const transactionIdFilter = document.getElementById('transactionIdFilter').value;
 
-            // Filter Data
-            let filteredData = allTransactions.filter(t => {
-                const matchCountry = selectedCountry === 'ALL' || t.country === selectedCountry;
-                const matchAccount = !accountIdFilter || t.accountId.toLowerCase().includes(accountIdFilter);
-                const matchTxnId = !transactionIdFilter || String(t.id).includes(transactionIdFilter);
-                return matchCountry && matchAccount && matchTxnId;
-            });
+            let filteredData = allTransactions;
 
-            // Determine currency for aggregate values
             const aggregateCurrency = (selectedCountry !== 'ALL' && countryData[selectedCountry])
                                       ? countryData[selectedCountry].currency
                                       : 'USD';
 
-            // 1. Calculate KPIs
-            const totalCount = filteredData.length;
             const totalVal = filteredData.reduce((sum, t) => sum + t.transactionAmount, 0);
-
-            document.getElementById('totalEvents').innerText = totalCount.toLocaleString();
             document.getElementById('totalValue').innerText = formatCurrency(totalVal, aggregateCurrency);
 
-            // 2. Process Risk Groups
-            const stats = {
-                LOW: { count: 0, value: 0, label: 'Low', color: 'success', hex: '#28a745' },
-                MED: { count: 0, value: 0, label: 'Medium', color: 'warning', hex: '#ffc107' },
-                HIGH: { count: 0, value: 0, label: 'High', color: 'danger', hex: '#dc3545' }
-            };
-
-            filteredData.forEach(t => {
-                let key = 'LOW';
-                if (t.status === 'SUSPICIOUS' || t.status === 'PENDING') key = 'MED';
-                if (t.status === 'FRAUD' || t.status === 'CONFIRMED_FRAUD' || t.status === 'BLOCKED_ACCOUNT' || t.status === 'BLOCKED_PERMANENT' || t.status === 'BLOCKED_24H') key = 'HIGH';
-
-                stats[key].count++;
-                stats[key].value += t.transactionAmount;
-            });
-
-            // 3. Update Tables
-            updateRiskTables(stats, totalCount, aggregateCurrency);
+            updateRiskTables(filteredData, filteredData.length, aggregateCurrency);
             updateCountryTable(filteredData);
-            updateAlertsTable(allTransactions);
 
-            // 4. Update Visuals
             updateMap(filteredData);
             updateChart(filteredData);
         }
@@ -737,7 +1127,9 @@
 
                 fetchPagedTransactions(true); // Fetch new filtered data
             } else {
-                renderRecentTransactions(allTransactions, false);
+                // Trigger search via API
+                currentPage = 0;
+                fetchPagedTransactions(true);
             }
         }
 
@@ -748,7 +1140,7 @@
             }
 
             if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No transactions found.</td></tr>';
+                if (clearTable) tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No transactions found.</td></tr>';
                 return;
             }
 
@@ -763,7 +1155,7 @@
                 if (t.status === 'PENDING') {
                     statusBadge = `<span class="badge-pending">Pending</span>`;
                     rowClass = 'clickable-row';
-                    clickHandler = `onclick="openReviewModal(${t.id}, '${t.transactionAmount}', '${t.currency}', '${t.accountId}', '${t.mlScore}', '${t.riskRuleFlags || 'Manual Review Required'}')"`;
+                    clickHandler = `onclick="openReviewModal(${t.id}, '${t.transactionAmount}', '${t.currency}', '${t.accountId}', '${t.mlScore}', '${t.riskRuleFlags || 'Manual Review Required'}', 'recent')"`;
                 } else if (t.status === 'NORMAL' || t.status === 'CLEARED') {
                     statusBadge = `<span class="badge-success-custom">Success</span>`;
                 } else if (t.status === 'BLOCKED_ACCOUNT' || t.status === 'BLOCKED_PERMANENT' || t.status === 'BLOCKED_24H') {
@@ -781,9 +1173,9 @@
                 tbody.innerHTML += `
                     <tr class="${rowClass}" ${clickHandler}>
                         <td><a href="#" class="txn-id-link">#${t.id}</a></td>
+                        <td>${t.accountId}</td>
                         <td class="amount-text">${formatCurrency(t.transactionAmount, t.currency)}</td>
                         <td>${t.currency}</td>
-                        <td>${t.accountId}</td>
                         <td>${t.merchantId}</td>
                         <td>${statusBadge}</td>
                         <td>${fraudFlag}</td>
@@ -794,48 +1186,37 @@
             });
         }
 
-        function updateRiskTables(stats, total, currency) {
+        function updateRiskTables(counts, volumes, total, currency) {
             const countBody = document.getElementById('riskCountTable');
             const valueBody = document.getElementById('riskValueTable');
             countBody.innerHTML = '';
             valueBody.innerHTML = '';
 
             ['LOW', 'MED', 'HIGH'].forEach(key => {
-                const s = stats[key];
-                const pct = total > 0 ? ((s.count / total) * 100).toFixed(2) : 0;
-                const avg = s.count > 0 ? s.value / s.count : 0;
+                const count = counts[key] || 0;
+                const volume = volumes[key] || 0;
+                const pct = total > 0 ? ((count / total) * 100).toFixed(2) : 0;
+                const avg = count > 0 ? volume / count : 0;
 
                 countBody.innerHTML += `
                     <tr class="risk-row-${key.toLowerCase()}">
-                        <td><span class="badge bg-${s.color}">${s.label}</span></td>
-                        <td>${s.count}</td>
+                        <td><span class="badge bg-${key === 'LOW' ? 'success' : key === 'MED' ? 'warning' : 'danger'}">${key}</span></td>
+                        <td>${count}</td>
                         <td>${pct}%</td>
                     </tr>
                 `;
 
                 valueBody.innerHTML += `
                     <tr class="risk-row-${key.toLowerCase()}">
-                        <td><span class="badge bg-${s.color}">${s.label}</span></td>
-                        <td>${formatCurrency(s.value, currency)}</td>
+                        <td><span class="badge bg-${key === 'LOW' ? 'success' : key === 'MED' ? 'warning' : 'danger'}">${key}</span></td>
+                        <td>${formatCurrency(volume, currency)}</td>
                         <td>${formatCurrency(avg, currency)}</td>
                     </tr>
                 `;
             });
         }
 
-        function updateCountryTable(data) {
-            const countryStats = {};
-
-            data.forEach(t => {
-                if (!countryStats[t.country]) {
-                    countryStats[t.country] = { LOW: 0, MED: 0, HIGH: 0 };
-                }
-                let key = 'LOW';
-                if (t.status === 'SUSPICIOUS' || t.status === 'PENDING') key = 'MED';
-                if (t.status === 'FRAUD' || t.status === 'CONFIRMED_FRAUD' || t.status === 'BLOCKED_ACCOUNT' || t.status === 'BLOCKED_PERMANENT' || t.status === 'BLOCKED_24H') key = 'HIGH';
-                countryStats[t.country][key]++;
-            });
-
+        function updateCountryTable(countryStats) {
             const tbody = document.getElementById('countryTable');
             tbody.innerHTML = '';
 
@@ -844,30 +1225,39 @@
                 tbody.innerHTML += `
                     <tr>
                         <td><strong>${country}</strong></td>
-                        <td class="text-success">${s.LOW}</td>
-                        <td class="text-warning">${s.MED}</td>
-                        <td class="text-danger">${s.HIGH}</td>
+                        <td class="text-success">${s.LOW || 0}</td>
+                        <td class="text-warning">${s.MED || 0}</td>
+                        <td class="text-danger">${s.HIGH || 0}</td>
                     </tr>
                 `;
             });
         }
 
-        function updateAlertsTable(data) {
+        function updateAlertsTable(data, clearTable) {
             const tbody = document.getElementById('alerts-table').getElementsByTagName('tbody')[0];
-            tbody.innerHTML = '';
+            if (clearTable) {
+                tbody.innerHTML = '';
+            }
 
-            const alerts = data.filter(t =>
-                t.status !== 'NORMAL' && t.status !== 'CLEARED'
-            );
+            if (!data || data.length === 0) {
+                if (clearTable) tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No alerts found.</td></tr>';
+                return;
+            }
 
-            alerts.sort((a, b) => b.id - a.id);
-
-            const actionableCount = alerts.filter(t => t.status === 'SUSPICIOUS' || t.status === 'FRAUD' || t.status === 'PENDING').length;
-            document.getElementById('alertCountBadge').innerText = actionableCount;
-
-            alerts.forEach(t => {
+            data.forEach(t => {
                 let statusBadge = '';
                 let actions = '';
+                let priorityBadge = '';
+
+                // Priority Logic
+                const score = t.mlScore || 0;
+                if (score > 0.8 || t.status === 'FRAUD') {
+                    priorityBadge = `<span class="badge badge-priority-critical">Critical</span>`;
+                } else if (score > 0.5 || t.status === 'SUSPICIOUS') {
+                    priorityBadge = `<span class="badge badge-priority-high">High</span>`;
+                } else {
+                    priorityBadge = `<span class="badge badge-priority-medium">Medium</span>`;
+                }
 
                 switch(t.status) {
                     case 'PENDING':
@@ -899,37 +1289,72 @@
 
                 const mlScorePercent = t.mlScore ? (t.mlScore * 100).toFixed(1) + '%' : '-';
 
+                // Fraud Reason Logic
+                let reason = t.riskRuleFlags || '-';
+                let reasonDisplay = reason;
+                if (reason.length > 30) {
+                    reasonDisplay = reason.substring(0, 30) + '...';
+                }
+                const reasonHtml = `<span class="fraud-reason" title="${reason}">${reasonDisplay}</span>`;
+
                 tbody.innerHTML += `
-                    <tr id="alert-row-${t.id}">
+                    <tr id="alert-row-${t.id}" class="clickable-row" onclick="openReviewModal(${t.id}, '${t.transactionAmount}', '${t.currency}', '${t.accountId}', '${t.mlScore}', '${t.riskRuleFlags || 'Manual Review Required'}', 'alerts')">
                         <td><a href="#" class="txn-id-link">#${t.id}</a></td>
+                        <td>${priorityBadge}</td>
                         <td>${formatCurrency(t.transactionAmount, t.currency)}</td>
                         <td>${t.accountId}</td>
                         <td>${statusBadge}</td>
                         <td>${mlScorePercent}</td>
-                        <td class="small text-muted">${t.riskRuleFlags || '-'}</td>
-                        <td>${actions}</td>
+                        <td>${reasonHtml}</td>
+                        <td onclick="event.stopPropagation()">${actions}</td>
                     </tr>
                 `;
             });
         }
 
         // --- Modal Logic ---
-        function openReviewModal(id, amount, currency, account, mlScore, reason) {
+        function openReviewModal(id, amount, currency, account, mlScore, reason, source) {
             currentReviewId = id;
-            document.getElementById('modalTxnId').innerText = '#' + id;
-            document.getElementById('modalAmount').innerText = formatCurrency(amount, currency);
-            document.getElementById('modalAccount').innerText = account;
+            currentReviewAccount = account;
 
-            const scoreVal = mlScore && mlScore !== 'undefined' ? (parseFloat(mlScore) * 100).toFixed(1) + '%' : 'N/A';
-            document.getElementById('modalMlScore').innerText = scoreVal;
+            // Determine which modal to open based on source
+            if (source === 'alerts') {
+                document.getElementById('alertModalTxnId').innerText = '#' + id;
+                document.getElementById('alertModalAmount').innerText = formatCurrency(amount, currency);
+                document.getElementById('alertModalAccount').innerText = account;
 
-            document.getElementById('modalReason').innerText = reason;
+                const scoreVal = mlScore && mlScore !== 'undefined' ? (parseFloat(mlScore) * 100).toFixed(1) + '%' : 'N/A';
+                document.getElementById('alertModalMlScore').innerText = scoreVal;
+                document.getElementById('alertModalReason').innerText = reason;
 
-            reviewModal.show();
+                alertActionModal.show();
+            } else {
+                // Default Pending Review Modal
+                document.getElementById('pendingModalTxnId').innerText = '#' + id;
+                document.getElementById('pendingModalAmount').innerText = formatCurrency(amount, currency);
+                document.getElementById('pendingModalAccount').innerText = account;
+
+                const scoreVal = mlScore && mlScore !== 'undefined' ? (parseFloat(mlScore) * 100).toFixed(1) + '%' : 'N/A';
+                document.getElementById('pendingModalMlScore').innerText = scoreVal;
+                document.getElementById('pendingModalReason').innerText = reason;
+
+                pendingReviewModal.show();
+            }
         }
 
         function confirmReviewAction(status) {
             if (!currentReviewId) return;
+
+            // Optimistic UI Update
+            const txnIndex = allTransactions.findIndex(t => t.id === currentReviewId);
+            if (txnIndex !== -1) {
+                allTransactions[txnIndex].status = status === 'FRAUD' ? 'CONFIRMED_FRAUD' : status;
+                updateDashboardUI();
+
+                if (document.getElementById('recent-view').classList.contains('active')) {
+                    fetchPagedTransactions(true);
+                }
+            }
 
             if (status === 'FRAUD') {
                 reviewTransaction(currentReviewId, 'CONFIRMED_FRAUD');
@@ -937,7 +1362,14 @@
                 reviewTransaction(currentReviewId, status);
             }
 
-            reviewModal.hide();
+            pendingReviewModal.hide();
+            alertActionModal.hide();
+        }
+
+        function triggerBlockAccount(type) {
+            if (!currentReviewId || !currentReviewAccount) return;
+            blockAccount(currentReviewAccount, currentReviewId, type);
+            alertActionModal.hide();
         }
 
         // --- Simulation Action ---
@@ -947,7 +1379,7 @@
             fetch(`${SIM_URL}${endpoint}?count=10`, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
-                    // Data will update via WebSocket automatically
+                    showToast('Simulation started: ' + data.message);
                 })
                 .catch(err => console.error(err));
         }
@@ -957,8 +1389,9 @@
             fetch(`${API_URL}/${id}/review?status=${status}`, { method: 'POST' })
                 .then(res => {
                     if (res.ok) {
-                        // Immediate UI Update
                         updateRowStatus(id, status);
+                        fetchAlertsData(true); // Refresh alerts list
+                        showToast(`Transaction #${id} marked as ${status}`);
                     } else {
                         alert('Error updating transaction status');
                     }
@@ -977,11 +1410,10 @@
                 })
                 .then(res => {
                     if (res.ok) {
-                        // Immediate UI Update
                         const status = type === '24H' ? 'BLOCKED_24H' : 'BLOCKED_PERMANENT';
                         updateRowStatus(transactionId, status);
-                        // Also update the transaction status in backend to reflect the block
                         reviewTransaction(transactionId, status);
+                        showToast(`Account ${accountId} blocked successfully.`);
                     } else {
                         alert('Error blocking account');
                     }
@@ -992,8 +1424,8 @@
         function updateRowStatus(id, status) {
             const row = document.getElementById(`alert-row-${id}`);
             if (row) {
-                const statusCell = row.cells[3];
-                const actionCell = row.cells[6];
+                const statusCell = row.cells[5]; // Adjusted index for Status column
+                const actionCell = row.cells[7]; // Adjusted index for Action column
 
                 let statusBadge = '';
                 let actions = '';

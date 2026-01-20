@@ -16,13 +16,15 @@ public class BlockedAccount {
 
     private String reason;
     private LocalDateTime blockedAt;
+    private LocalDateTime expiryAt; // Null means permanent
 
     public BlockedAccount() {}
 
-    public BlockedAccount(String accountId, String reason) {
+    public BlockedAccount(String accountId, String reason, LocalDateTime expiryAt) {
         this.accountId = accountId;
         this.reason = reason;
         this.blockedAt = LocalDateTime.now();
+        this.expiryAt = expiryAt;
     }
 
     // Getters and Setters
@@ -37,4 +39,7 @@ public class BlockedAccount {
 
     public LocalDateTime getBlockedAt() { return blockedAt; }
     public void setBlockedAt(LocalDateTime blockedAt) { this.blockedAt = blockedAt; }
+
+    public LocalDateTime getExpiryAt() { return expiryAt; }
+    public void setExpiryAt(LocalDateTime expiryAt) { this.expiryAt = expiryAt; }
 }

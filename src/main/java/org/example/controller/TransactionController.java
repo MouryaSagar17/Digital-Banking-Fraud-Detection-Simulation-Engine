@@ -1,5 +1,6 @@
 package org.example.controller;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.example.dto.TransactionRequest;
 import org.example.model.Transaction;
@@ -14,6 +15,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -43,6 +46,7 @@ public class TransactionController {
         transaction.setMerchantCategory(transactionRequest.getMerchantCategory());
         transaction.setIpAddress(transactionRequest.getIpAddress());
 
+        // INTELLIGENT SIMULATION DATA POPULATION
         boolean isNormal = transactionRequest.getCustomerId().startsWith("CUST_NORMAL");
         boolean isFraud = transactionRequest.getCustomerId().startsWith("CUST_FRAUD");
 
@@ -87,35 +91,112 @@ public class TransactionController {
         if (startDate != null && endDate != null) {
             return transactionService.getTransactionsByDateRange(startDate, endDate);
         }
-        return transactionService.getAllTransactions(PageRequest.of(0, 1000)).getContent(); // Limit to 1000 for charts
+        return transactionService.getAllTransactionsList();
     }
 
     @GetMapping("/paged")
     public Page<Transaction> getPagedTransactions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String riskLevel,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String search) {
         
-        PageRequest pageRequest = PageRequest.of(page, size, Sort.by("txnTimestamp").descending());
+        Sort sort = Sort.by("txnTimestamp").descending();
         
-        if (status != null && !status.equals("ALL")) {
-            List<String> statuses = new ArrayList<>();
+        if ("risk_desc".equals(sortBy)) {
+            sort = Sort.by("ruleRiskScore").descending();
+        } else if ("ml_desc".equals(sortBy)) {
+            sort = Sort.by("mlScore").descending();
+        } else if ("amount_desc".equals(sortBy)) {
+            sort = Sort.by("transactionAmount").descending();
+        } else if ("oldest".equals(sortBy)) {
+            sort = Sort.by("txnTimestamp").ascending();
+        }
+
+        PageRequest pageRequest = PageRequest.of(page, size, sort);
+        
+        List<String> statuses = new ArrayList<>();
+        
+        // Handle Risk Level Filter
+        if (riskLevel != null && !riskLevel.equals("ALL")) {
+            if (riskLevel.equals("HIGH")) {
+                statuses.add("FRAUD");
+                statuses.add("CONFIRMED_FRAUD");
+                statuses.add("BLOCKED_ACCOUNT");
+                statuses.add("BLOCKED_PERMANENT");
+                statuses.add("BLOCKED_24H");
+            } else if (riskLevel.equals("MED")) {
+                statuses.add("SUSPICIOUS");
+                statuses.add("PENDING");
+            } else if (riskLevel.equals("LOW")) {
+                statuses.add("NORMAL");
+                statuses.add("CLEARED");
+            }
+        } else if (status != null && !status.equals("ALL")) {
             if (status.equals("SUCCESS")) {
                 statuses.add("NORMAL");
                 statuses.add("CLEARED");
             } else if (status.equals("FAILED")) {
                 statuses.add("BLOCKED_ACCOUNT");
+                statuses.add("BLOCKED_PERMANENT");
+                statuses.add("BLOCKED_24H");
             } else if (status.equals("PENDING")) {
                 statuses.add("PENDING");
             } else if (status.equals("FRAUD")) {
                 statuses.add("FRAUD");
                 statuses.add("SUSPICIOUS");
                 statuses.add("CONFIRMED_FRAUD");
+            } else if (status.equals("RESOLVED")) {
+                statuses.add("CLEARED");
+                statuses.add("CONFIRMED_FRAUD");
+                statuses.add("BLOCKED_PERMANENT");
+                statuses.add("BLOCKED_24H");
+            } else if (status.equals("BLOCKED")) {
+                statuses.add("BLOCKED_ACCOUNT");
+                statuses.add("BLOCKED_PERMANENT");
+                statuses.add("BLOCKED_24H");
             }
-            return transactionService.findByStatus(statuses, pageRequest);
+        }
+
+        if (statuses.isEmpty()) {
+            statuses = null; // Search all
         }
         
-        return transactionService.getAllTransactions(pageRequest);
+        return transactionService.searchTransactions(statuses, search, pageRequest);
+    }
+
+    @GetMapping("/export")
+    public void exportTransactions(
+            HttpServletResponse response,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search) throws IOException {
+
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=\"transactions.csv\"");
+
+        List<String> statuses = null; 
+        // ... (Add status resolution logic here if needed for export consistency)
+
+        PageRequest pageRequest = PageRequest.of(0, 10000, Sort.by("txnTimestamp").descending());
+        Page<Transaction> page = transactionService.searchTransactions(statuses, search, pageRequest);
+        List<Transaction> transactions = page.getContent();
+
+        try (PrintWriter writer = response.getWriter()) {
+            writer.println("Transaction ID,Account ID,Amount,Currency,Status,Fraud Flag,Risk Score,Timestamp");
+            for (Transaction t : transactions) {
+                writer.printf("%d,%s,%.2f,%s,%s,%s,%s,%s%n",
+                        t.getId(),
+                        t.getAccountId(),
+                        t.getTransactionAmount(),
+                        t.getCurrency(),
+                        t.getStatus(),
+                        t.isFraudLabel() ? "YES" : "NO",
+                        t.getRuleRiskScore(),
+                        t.getTxnTimestamp());
+            }
+        }
     }
 
     @GetMapping("/{id}")
