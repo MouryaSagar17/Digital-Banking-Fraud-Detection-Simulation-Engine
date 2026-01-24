@@ -466,18 +466,8 @@
                     <h5 class="mb-3">Transactions (<span id="txnListCount">0</span>)</h5>
                     <div class="table-responsive" id="recentTxnContainer">
                         <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Txn ID</th>
-                                    <th>Account ID</th>
-                                    <th>Amount</th>
-                                    <th>Currency</th>
-                                    <th>Receiver Account</th>
-                                    <th>Status</th>
-                                    <th>Fraud Flag</th>
-                                    <th>Fraud Reason</th>
-                                    <th>Timestamp</th>
-                                </tr>
+                            <thead class="table-light" id="recentTxnHead">
+                                <!-- Dynamic Headers -->
                             </thead>
                             <tbody id="recentTxnBody">
                                 <!-- Populated by JS -->
@@ -592,103 +582,65 @@
         </div>
     </div>
 
-    <!-- Pending Review Modal (Recent Transactions) -->
-    <div class="modal fade" id="pendingReviewModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+    <!-- Review Modal -->
+    <div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-light border-bottom-0">
-                    <h5 class="modal-title fw-bold">Review Pending Transaction</h5>
+                    <h5 class="modal-title fw-bold">Review Transaction</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="fw-bold text-muted small">Transaction ID</label>
-                        <div id="pendingModalTxnId" class="fs-5 font-monospace text-primary"></div>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <label class="fw-bold text-muted small">Amount</label>
-                            <div id="pendingModalAmount" class="fs-5 text-success fw-bold"></div>
-                        </div>
-                        <div class="col-6">
-                            <label class="fw-bold text-muted small">Account</label>
-                            <div id="pendingModalAccount"></div>
-                        </div>
-                    </div>
-                    <div class="mb-3 p-3 bg-light rounded border">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="fw-bold text-dark">ML Risk Score</span>
-                            <span id="pendingModalMlScore" class="badge bg-primary rounded-pill"></span>
-                        </div>
-                        <div class="fw-bold text-dark mb-1">Triggered Rules</div>
-                        <div id="pendingModalReason" class="text-danger small"></div>
-                    </div>
-                    <div class="alert alert-warning small">
-                        <i class="fas fa-info-circle me-1"></i> This transaction is <b>PENDING</b>. Please verify.
-                    </div>
-                </div>
-                <div class="modal-footer border-top-0 pt-0 pb-4 px-4">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-outline-danger" onclick="confirmReviewAction('FRAUD')">
-                        <i class="fas fa-ban me-1"></i> Confirm Fraud
-                    </button>
-                    <button type="button" class="btn btn-success" onclick="confirmReviewAction('CLEARED')">
-                        <i class="fas fa-check me-1"></i> Approve
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Alert Action Modal (Alerts Review) -->
-    <div class="modal fade" id="alertActionModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-danger text-white border-bottom-0">
-                    <h5 class="modal-title fw-bold"><i class="fas fa-exclamation-triangle me-2"></i> Take Action on Alert</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4">
                     <div class="row">
+                        <!-- Left Column: Transaction Details -->
                         <div class="col-md-6 border-end">
                             <h6 class="text-muted text-uppercase small fw-bold mb-3">Transaction Details</h6>
                             <div class="mb-3">
                                 <label class="text-muted small">Transaction ID</label>
-                                <div id="alertModalTxnId" class="fs-5 font-monospace text-primary"></div>
+                                <div id="modalTxnId" class="fs-5 font-monospace text-primary"></div>
                             </div>
                             <div class="mb-3">
                                 <label class="text-muted small">Amount</label>
-                                <div id="alertModalAmount" class="fs-4 fw-bold text-success"></div>
+                                <div id="modalAmount" class="fs-4 fw-bold text-success"></div>
                             </div>
                             <div class="mb-3">
                                 <label class="text-muted small">Account ID</label>
-                                <div id="alertModalAccount" class="fs-6"></div>
+                                <div id="modalAccount" class="fs-6"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small">Timestamp</label>
+                                <div class="fs-6">2023-10-27 14:30:00</div> <!-- Mocked for now -->
                             </div>
                         </div>
+
+                        <!-- Right Column: Risk Analysis -->
                         <div class="col-md-6 ps-4">
                             <h6 class="text-muted text-uppercase small fw-bold mb-3">Risk Analysis</h6>
                             <div class="p-3 bg-light rounded-3 border mb-3">
                                 <div class="d-flex justify-content-between mb-2">
                                     <span class="fw-bold text-dark">ML Risk Score</span>
-                                    <span id="alertModalMlScore" class="badge bg-danger rounded-pill"></span>
+                                    <span id="modalMlScore" class="badge bg-primary rounded-pill"></span>
                                 </div>
+                                <div class="small text-muted mb-2" id="modalMlConfidence"></div>
+                                <hr class="my-2 text-muted">
                                 <div class="fw-bold text-dark mb-1">Triggered Rules</div>
-                                <div id="alertModalReason" class="text-danger small"></div>
+                                <div id="modalReason" class="text-danger small"></div>
                             </div>
+
                             <div class="mb-3">
                                 <label class="form-label small fw-bold">Resolution Note</label>
-                                <textarea class="form-control" id="alertResolutionNote" rows="2" placeholder="Enter reason for decision..."></textarea>
+                                <textarea class="form-control" id="resolutionNote" rows="2" placeholder="Enter reason for decision..."></textarea>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer border-top-0 pt-0 pb-4 px-4 bg-light">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-success" onclick="confirmReviewAction('CLEARED')"><i class="fas fa-check me-1"></i> Clear Alert</button>
-                        <button type="button" class="btn btn-warning text-dark" onclick="triggerBlockAccount('24H')"><i class="fas fa-clock me-1"></i> Block 24h</button>
-                        <button type="button" class="btn btn-danger" onclick="triggerBlockAccount('PERMANENT')"><i class="fas fa-ban me-1"></i> Block Permanent</button>
+
+                    <div class="alert alert-warning small d-flex align-items-center border-0 bg-warning-subtle text-warning-emphasis mt-3">
+                        <i class="fas fa-exclamation-circle me-2 fs-5"></i>
+                        <div>This transaction is <b>PENDING</b> review. Please verify before approving.</div>
                     </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 pb-4 px-4" id="modalFooter">
+                    <!-- Buttons will be injected here -->
                 </div>
             </div>
         </div>
@@ -816,8 +768,7 @@
 
         let currentReviewId = null;
         let currentReviewAccount = null;
-        let pendingReviewModal = null;
-        let alertActionModal = null;
+        let reviewModal = null;
         let manualTxnModal = null;
         let toast = null;
 
@@ -828,8 +779,7 @@
             fetchPagedTransactions(true); // Initial load for table
             fetchAlertsData(true); // Initial load for alerts
             connectWebSocket();
-            pendingReviewModal = new bootstrap.Modal(document.getElementById('pendingReviewModal'));
-            alertActionModal = new bootstrap.Modal(document.getElementById('alertActionModal'));
+            reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
             manualTxnModal = new bootstrap.Modal(document.getElementById('manualTxnModal'));
             toast = new bootstrap.Toast(document.getElementById('liveToast'));
         });
@@ -1135,9 +1085,29 @@
 
         function renderRecentTransactions(data, clearTable) {
             const tbody = document.getElementById('recentTxnBody');
+            const thead = document.getElementById('recentTxnHead');
+
             if (clearTable) {
                 tbody.innerHTML = '';
             }
+
+            // Dynamic Headers
+            let headers = `<tr>
+                <th>Txn ID</th>
+                <th>Account ID</th>
+                <th>Amount</th>
+                <th>Currency</th>
+                <th>Receiver Account</th>
+                <th>Status</th>`;
+
+            if (currentTxnFilter === 'ALL' || currentTxnFilter === 'FRAUD') {
+                headers += `<th>Fraud Flag</th><th>Fraud Reason</th>`;
+            } else if (currentTxnFilter === 'PENDING') {
+                headers += `<th>ML Score</th><th>Fraud Reason</th>`;
+            }
+
+            headers += `<th>Timestamp</th></tr>`;
+            thead.innerHTML = headers;
 
             if (!data || data.length === 0) {
                 if (clearTable) tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No transactions found.</td></tr>';
@@ -1170,19 +1140,25 @@
                     fraudReason = `<span class="fraud-reason" title="${t.riskRuleFlags}">${t.riskRuleFlags || 'Suspicious Activity'}</span>`;
                 }
 
-                tbody.innerHTML += `
-                    <tr class="${rowClass}" ${clickHandler}>
-                        <td><a href="#" class="txn-id-link">#${t.id}</a></td>
-                        <td>${t.accountId}</td>
-                        <td class="amount-text">${formatCurrency(t.transactionAmount, t.currency)}</td>
-                        <td>${t.currency}</td>
-                        <td>${t.merchantId}</td>
-                        <td>${statusBadge}</td>
-                        <td>${fraudFlag}</td>
-                        <td>${fraudReason}</td>
-                        <td class="text-muted small">${new Date(t.txnTimestamp).toLocaleString()}</td>
-                    </tr>
-                `;
+                // Dynamic Row Content
+                let rowContent = `
+                    <td><a href="#" class="txn-id-link">#${t.id}</a></td>
+                    <td>${t.accountId}</td>
+                    <td class="amount-text">${formatCurrency(t.transactionAmount, t.currency)}</td>
+                    <td>${t.currency}</td>
+                    <td>${t.merchantId}</td>
+                    <td>${statusBadge}</td>`;
+
+                if (currentTxnFilter === 'ALL' || currentTxnFilter === 'FRAUD') {
+                    rowContent += `<td>${fraudFlag}</td><td>${fraudReason}</td>`;
+                } else if (currentTxnFilter === 'PENDING') {
+                    const mlScore = t.mlScore ? (t.mlScore * 100).toFixed(1) + '%' : '-';
+                    rowContent += `<td>${mlScore}</td><td>${fraudReason}</td>`;
+                }
+
+                rowContent += `<td class="text-muted small">${new Date(t.txnTimestamp).toLocaleString()}</td>`;
+
+                tbody.innerHTML += `<tr class="${rowClass}" ${clickHandler}>${rowContent}</tr>`;
             });
         }
 
@@ -1319,26 +1295,42 @@
 
             // Determine which modal to open based on source
             if (source === 'alerts') {
-                document.getElementById('alertModalTxnId').innerText = '#' + id;
-                document.getElementById('alertModalAmount').innerText = formatCurrency(amount, currency);
-                document.getElementById('alertModalAccount').innerText = account;
+                document.getElementById('modalTxnId').innerText = '#' + id;
+                document.getElementById('modalAmount').innerText = formatCurrency(amount, currency);
+                document.getElementById('modalAccount').innerText = account;
 
                 const scoreVal = mlScore && mlScore !== 'undefined' ? (parseFloat(mlScore) * 100).toFixed(1) + '%' : 'N/A';
-                document.getElementById('alertModalMlScore').innerText = scoreVal;
-                document.getElementById('alertModalReason').innerText = reason;
+                document.getElementById('modalMlScore').innerText = scoreVal;
+                document.getElementById('modalReason').innerText = reason;
 
-                alertActionModal.show();
+                // Dynamic Footer Buttons for Alerts
+                const footer = document.getElementById('modalFooter');
+                footer.innerHTML = `
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="blockAccount('${account}', ${id}, 'PERMANENT')"><i class="fas fa-ban me-1"></i> Block</button>
+                    <button type="button" class="btn btn-warning text-dark" onclick="blockAccount('${account}', ${id}, '24H')"><i class="fas fa-clock me-1"></i> Block 24h</button>
+                    <button type="button" class="btn btn-success" onclick="confirmReviewAction('CLEARED')"><i class="fas fa-check me-1"></i> Approve</button>
+                `;
+
+                reviewModal.show();
             } else {
                 // Default Pending Review Modal
-                document.getElementById('pendingModalTxnId').innerText = '#' + id;
-                document.getElementById('pendingModalAmount').innerText = formatCurrency(amount, currency);
-                document.getElementById('pendingModalAccount').innerText = account;
+                document.getElementById('modalTxnId').innerText = '#' + id;
+                document.getElementById('modalAmount').innerText = formatCurrency(amount, currency);
+                document.getElementById('modalAccount').innerText = account;
 
                 const scoreVal = mlScore && mlScore !== 'undefined' ? (parseFloat(mlScore) * 100).toFixed(1) + '%' : 'N/A';
-                document.getElementById('pendingModalMlScore').innerText = scoreVal;
-                document.getElementById('pendingModalReason').innerText = reason;
+                document.getElementById('modalMlScore').innerText = scoreVal;
+                document.getElementById('modalReason').innerText = reason;
 
-                pendingReviewModal.show();
+                const footer = document.getElementById('modalFooter');
+                footer.innerHTML = `
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-outline-danger" onclick="confirmReviewAction('FRAUD')"><i class="fas fa-ban me-1"></i> Confirm Fraud</button>
+                    <button type="button" class="btn btn-success" onclick="confirmReviewAction('CLEARED')"><i class="fas fa-check me-1"></i> Approve</button>
+                `;
+
+                reviewModal.show();
             }
         }
 
@@ -1362,14 +1354,7 @@
                 reviewTransaction(currentReviewId, status);
             }
 
-            pendingReviewModal.hide();
-            alertActionModal.hide();
-        }
-
-        function triggerBlockAccount(type) {
-            if (!currentReviewId || !currentReviewAccount) return;
-            blockAccount(currentReviewAccount, currentReviewId, type);
-            alertActionModal.hide();
+            reviewModal.hide();
         }
 
         // --- Simulation Action ---

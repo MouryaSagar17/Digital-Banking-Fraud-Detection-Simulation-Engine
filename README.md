@@ -114,8 +114,8 @@ graph TB
 │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐ │
 │  │  Rule-Based  │   │   Machine    │   │  Behavioral  │ │
 │  │   Analysis   │   │   Learning   │   │   Pattern    │ │
-│  │    (25+      │   │    Model     │   │   Analysis   │ │
-│  │    Rules)    │   │              │   │              │ │
+│  │ (High Amount,│   │ (Weka Random │   │ (Velocity,   │ │
+│  │  Geo-Mismatch)│   │    Forest)   │   │  Time-of-Day)│ │
 │  └──────────────┘   └──────────────┘   └──────────────┘ │
 │          │                  │                  │        │
 │          └──────────────────┼──────────────────┘        │
@@ -172,6 +172,55 @@ sequenceDiagram
     Service-->>Controller: Transaction Object
     Controller-->>Dashboard: JSON Response
     Dashboard-->>User: Display Result
+```
+
+---
+
+## 🎨 Dashboard Interface Flow
+
+### User Interaction Flow
+
+```mermaid
+graph TD
+    A[User Opens Dashboard] --> B{Authentication}
+    B -->|Success| C[Dashboard Home]
+    B -->|Failure| D[Login Page (Password/OTP)]
+    
+    C --> E[Initial Data Load (REST)]
+    E --> F[Display Overview & Charts]
+    
+    subgraph "Real-Time Updates"
+        W[WebSocket Channel] -->|Push New Data| F
+        W -->|Push Status Changes| F
+    end
+    
+    F --> G{User Action}
+    
+    G -->|Switch Tab| H[Recent Transactions]
+    G -->|Switch Tab| I[Alerts Review]
+    G -->|Filter| J[Apply Country Filter]
+    G -->|Simulation| K[Click 'Refresh']
+    
+    H --> L{Row Action}
+    L -->|Click Pending| M[Open Review Modal]
+    M -->|Mark Success| N[Update Status: CLEARED]
+    M -->|Confirm Fraud| O[Update Status: FRAUD]
+    
+    I --> P{Alert Action}
+    P -->|Block 24h| Q[Block Account (Temp)]
+    P -->|Block Permanent| R[Block Account (Perm)]
+    P -->|Mark Success| S[Clear Alert]
+    
+    K --> T[Trigger Simulation API]
+    T --> W
+    
+    N --> U[Update DB & Notify]
+    O --> U
+    Q --> U
+    R --> U
+    S --> U
+    
+    U --> W
 ```
 
 ---
@@ -235,6 +284,18 @@ graph LR
 │  • Used as a secondary validation layer             │
 └─────────────────────────────────────────────────────┘
 ```
+
+### 🏆 Model Performance Metrics
+
+We evaluated multiple algorithms to select the best model for fraud detection.
+
+| Algorithm | Accuracy | Precision | Recall | F1-Score |
+| :--- | :--- | :--- | :--- | :--- |
+| **Random Forest** | **95.00%** | **0.95** | **0.95** | **0.95** |
+| J48 (Decision Tree) | 90.00% | 0.90 | 0.90 | 0.90 |
+| Naive Bayes | 80.00% | 0.80 | 0.80 | 0.80 |
+
+*The **Random Forest** model was selected for production due to its superior accuracy and robustness.*
 
 ---
 
@@ -318,7 +379,7 @@ graph TB
 
 4. **Train ML Model (First Run Only)**
    * Open `src/main/java/org/example/ml/FraudModelTrainer.java`
-   * Run the `main` method to generate `fraud_rf.model`
+   * Run the `main` method to generate `fraud_rf.model` in the project root.
 
 5. **Start Application**
    ```bash
