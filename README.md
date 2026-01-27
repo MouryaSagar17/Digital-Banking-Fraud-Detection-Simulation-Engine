@@ -184,9 +184,9 @@ sequenceDiagram
 graph TD
     A[User Opens Dashboard] --> B{Authentication}
     B -->|Success| C[Dashboard Home]
-    B -->|Failure| D[Login Page (Password/OTP)]
+    B -->|Failure| D["Login Page (Password/OTP)"]
     
-    C --> E[Initial Data Load (REST)]
+    C --> E["Initial Data Load (REST)"]
     E --> F[Display Overview & Charts]
     
     subgraph "Real-Time Updates"
@@ -203,12 +203,12 @@ graph TD
     
     H --> L{Row Action}
     L -->|Click Pending| M[Open Review Modal]
-    M -->|Mark Success| N[Update Status: CLEARED]
-    M -->|Confirm Fraud| O[Update Status: FRAUD]
+    M -->|Mark Success| N["Update Status: CLEARED"]
+    M -->|Confirm Fraud| O["Update Status: FRAUD"]
     
     I --> P{Alert Action}
-    P -->|Block 24h| Q[Block Account (Temp)]
-    P -->|Block Permanent| R[Block Account (Perm)]
+    P -->|Block 24h| Q["Block Account (Temp)"]
+    P -->|Block Permanent| R["Block Account (Perm)"]
     P -->|Mark Success| S[Clear Alert]
     
     K --> T[Trigger Simulation API]
