@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class RuleEngineTest {
 
-    private final RuleEngine ruleEngine = new RuleEngine();
+    private final ComprehensiveRuleEngine ruleEngine = new ComprehensiveRuleEngine();
 
     @Test
     void testHighAmountRule() {
@@ -33,6 +33,8 @@ class RuleEngineTest {
 
         List<String> triggered = ruleEngine.evaluate(t);
         assertTrue(triggered.isEmpty(), "Should trigger no rules");
-        assertEquals("NORMAL", ruleEngine.getFinalStatus(triggered));
+        
+        int score = ruleEngine.calculateRiskScore(triggered);
+        assertEquals("NORMAL", ruleEngine.getFinalStatus(triggered, score));
     }
 }

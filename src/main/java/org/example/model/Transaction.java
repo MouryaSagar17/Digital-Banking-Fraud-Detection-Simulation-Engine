@@ -47,6 +47,17 @@ public class Transaction {
     private boolean isDormant;
     private boolean isBlacklisted;
 
+    // Additional fields for 26 Rules
+    private String email;
+    private String phoneNumber;
+    private String beneficiaryId;
+    private int mfaFailures;
+    private boolean kycVerified;
+    private String accountHolderName;
+    private String beneficiaryName; // For name mismatch check (simplified)
+    private boolean isTrustedMerchant;
+    private boolean isTrustedDevice;
+
     // ML Fields
     private String mlPrediction;
     private double mlScore;
@@ -131,4 +142,31 @@ public class Transaction {
 
     public double getMlScore() { return mlScore; }
     public void setMlScore(double mlScore) { this.mlScore = mlScore; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public String getBeneficiaryId() { return beneficiaryId; }
+    public void setBeneficiaryId(String beneficiaryId) { this.beneficiaryId = beneficiaryId; }
+
+    public int getMfaFailures() { return mfaFailures; }
+    public void setMfaFailures(int mfaFailures) { this.mfaFailures = mfaFailures; }
+
+    public boolean isKycVerified() { return kycVerified; }
+    public void setKycVerified(boolean kycVerified) { this.kycVerified = kycVerified; }
+
+    public String getAccountHolderName() { return accountHolderName; }
+    public void setAccountHolderName(String accountHolderName) { this.accountHolderName = accountHolderName; }
+
+    public String getBeneficiaryName() { return beneficiaryName; }
+    public void setBeneficiaryName(String beneficiaryName) { this.beneficiaryName = beneficiaryName; }
+
+    public boolean isTrustedMerchant() { return isTrustedMerchant; }
+    public void setTrustedMerchant(boolean trustedMerchant) { isTrustedMerchant = trustedMerchant; }
+
+    public boolean isTrustedDevice() { return isTrustedDevice; }
+    public void setTrustedDevice(boolean trustedDevice) { isTrustedDevice = trustedDevice; }
 }
